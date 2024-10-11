@@ -1,5 +1,5 @@
 from barcode import Code128
-from barcode.writer import ImageWriter
+from barcode.writer import BaseWriter, ImageWriter
 from PIL import Image, ImageDraw, ImageFont
 import random
 import string
@@ -11,10 +11,18 @@ def generate_random_string(length: int) -> str:
 
 
 def create_barcode_image(data: str, output_path: str) -> None:
+    def generate_dark_color():
+        return "#{:02x}{:02x}{:02x}".format(
+            random.randint(0, 50), random.randint(0, 50), random.randint(0, 50)
+        )
+
     options = {
         "module_height": 10,
         "font_size": 5,
         "text_distance": 3,
+        "foreground": generate_dark_color(),
+        "center_text": False,
+        "quiet_zone": 0,
     }
 
     barcode = Code128(data, writer=ImageWriter())
