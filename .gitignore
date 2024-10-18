@@ -1,4 +1,5 @@
 .venv
 training
 runs
+barcode.yaml
 __pycache__

@@ -7,6 +7,9 @@ from torch.utils.data import DataLoader
 from torchvision.transforms import Resize, ToTensor, Compose
 from ultralytics import YOLO
 
+DOC_WIDTH = 640
+DOC_HEIGHT = 320
+
 
 def generate_training_images(num_images: int, output_folder: str) -> None:
     if os.path.exists(output_folder):
@@ -19,14 +22,14 @@ def generate_training_images(num_images: int, output_folder: str) -> None:
     os.makedirs(output_folder, exist_ok=True)
 
     for i in range(num_images):
-        create_barcode_image(f"barcode_{i+1}.png")
+        create_barcode_image(f"barcode_{i+1}.png", DOC_WIDTH, DOC_HEIGHT)
         print(f"Generated image {i+1}/{num_images}")
 
 
-def setup_yolo_detector(input_size: Tuple[int, int] = (640, 320)) -> YOLO:
+def setup_yolo_detector() -> YOLO:
     model = YOLO("yolov8n.pt")
     model.model.yaml["nc"] = 1
-    model.model.yaml["input_size"] = input_size
+    model.model.yaml["input_size"] = (DOC_WIDTH, DOC_HEIGHT)
     return model
 
 
@@ -35,7 +38,7 @@ def train_yolo_detector(model: YOLO) -> None:
     model.train(
         data="barcode.yaml",
         epochs=50,
-        imgsz=640,
+        imgsz=(DOC_WIDTH, DOC_HEIGHT),
         batch=64,
         workers=2,
         lr0=0.001,

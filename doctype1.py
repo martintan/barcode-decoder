@@ -14,8 +14,7 @@ from utils import (
 )
 
 
-def create_barcode_image(filename: str) -> None:
-    doc_width, doc_height = 640, 320
+def create_barcode_image(filename: str, doc_width: int, doc_height: int) -> None:
     background = Image.new("RGB", (doc_width, doc_height), color="white")
     draw = ImageDraw.Draw(background)
 
@@ -96,6 +95,15 @@ def create_barcode_image(filename: str) -> None:
     barcode_position = (20, doc_height - barcode_img.height - 20)
     background.paste(barcode_img, barcode_position)
 
+    # Calculate barcode bounding box
+    barcode_x = 20
+    barcode_y = doc_height - barcode_img.height - 20
+    barcode_width = barcode_img.width
+    barcode_height = barcode_img.height
+
+    # Draw the bounding box
+    # draw.rectangle([barcode_x, barcode_y, barcode_x + barcode_width, barcode_y + barcode_height], outline="red", width=2)
+
     bottom_x_start = doc_width - 200
     bottom_x_end = doc_width - 20
     bottom_text = generate_random_text(3)
@@ -107,18 +115,24 @@ def create_barcode_image(filename: str) -> None:
     barcode_path = f"training/images/{filename.rsplit('.', 1)[0]}.jpg"
     background.save(barcode_path, format="JPEG", quality=95)
 
-    # Calculate barcode bounding box
-    barcode_x = 20 / doc_width
-    barcode_y = (doc_height - barcode_img.height - 20) / doc_height
-    barcode_width = barcode_img.width / doc_width
-    barcode_height = barcode_img.height / doc_height
+    # Calculate normalized bounding box coordinates
+    norm_barcode_x = barcode_x / doc_width
+    norm_barcode_y = barcode_y / doc_height
+    norm_barcode_width = barcode_width / doc_width
+    norm_barcode_height = barcode_height / doc_height
+
+    # Calculate center coordinates and dimensions
+    center_x = norm_barcode_x + (norm_barcode_width / 2)
+    center_y = norm_barcode_y + (norm_barcode_height / 2)
 
     # Create label file
-    label_name = filename.split('/')[-1].rsplit('.', 1)[0]
+    label_name = filename.split("/")[-1].rsplit(".", 1)[0]
     label_path = f"training/labels/{label_name}.txt"
     os.makedirs("training/labels", exist_ok=True)
-    with open(label_path, 'w') as f:
-        f.write(f"0 {barcode_x:.6f} {barcode_y:.6f} {barcode_width:.6f} {barcode_height:.6f}")
+    with open(label_path, "w") as f:
+        f.write(
+            f"0 {center_x:.6f} {center_y:.6f} {norm_barcode_width:.6f} {norm_barcode_height:.6f}"
+        )
 
     add_scan_effects(barcode_path)
 
