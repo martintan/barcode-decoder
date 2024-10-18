@@ -89,20 +89,25 @@ def create_barcode_image(filename: str, doc_width: int, doc_height: int) -> None
         "text_distance": 1,
         "foreground": "black",
         "center_text": True,
+        "quiet_zone": 0,
     }
     barcode = Code128(barcode_data, writer=ImageWriter())
-    barcode_img = barcode.render(options)
+    barcode_img = barcode.render(options, text=barcode_data)
     barcode_position = (20, doc_height - barcode_img.height - 20)
     background.paste(barcode_img, barcode_position)
 
     # Calculate barcode bounding box
     barcode_x = 20
-    barcode_y = doc_height - barcode_img.height - 20
+    barcode_y = doc_height - barcode_img.height - 10
     barcode_width = barcode_img.width
-    barcode_height = barcode_img.height
+    barcode_height = barcode_img.height - 35
 
     # Draw the bounding box
-    # draw.rectangle([barcode_x, barcode_y, barcode_x + barcode_width, barcode_y + barcode_height], outline="red", width=2)
+    # draw.rectangle(
+    #     [barcode_x, barcode_y, barcode_x + barcode_width, barcode_y + barcode_height],
+    #     outline="red",
+    #     width=2,
+    # )
 
     bottom_x_start = doc_width - 200
     bottom_x_end = doc_width - 20
