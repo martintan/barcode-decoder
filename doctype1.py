@@ -14,14 +14,7 @@ from utils import (
 )
 
 
-def create_barcode_image(filename: str, doc_width: int, doc_height: int) -> None:
-    background = Image.new("RGB", (doc_width, doc_height), color="white")
-    draw = ImageDraw.Draw(background)
-
-    font_small = ImageFont.truetype("opensans.ttf", 8)
-    font_medium = ImageFont.truetype("opensans.ttf", 10)
-    font_large = ImageFont.truetype("opensans.ttf", 48)
-
+def add_text_and_lines(draw, doc_width, doc_height, font_small, font_medium, font_large):
     def draw_horizontal_line(y_position, x_start, x_end):
         draw.line([(x_start, y_position), (x_end, y_position)], fill="black", width=1)
 
@@ -30,7 +23,9 @@ def create_barcode_image(filename: str, doc_width: int, doc_height: int) -> None
             add_text_to_image(draw, text, (start_x, start_y + i * 12), font)
 
     left_x_start, left_x_end = 20, 160
+    right_x_start, right_x_end = 180, 320
 
+    # Left side text blocks
     for i in range(4):
         y_start = 48 + i * 40
         texts = [
@@ -52,8 +47,7 @@ def create_barcode_image(filename: str, doc_width: int, doc_height: int) -> None
         add_text_block(texts, left_x_start, y_start, fonts)
         draw_horizontal_line(y_start + 36, left_x_start, left_x_end)
 
-    right_x_start, right_x_end = 180, 320
-
+    # Right side text blocks
     for i in range(2):
         y_start = 48 + i * 40
         texts = [
@@ -69,6 +63,7 @@ def create_barcode_image(filename: str, doc_width: int, doc_height: int) -> None
         add_text_block(texts, right_x_start, y_start, fonts)
         draw_horizontal_line(y_start + 36, right_x_start, right_x_end)
 
+    # Top right text
     for i in range(3):
         if i < 2:
             text = f"{generate_random_text(1).upper()}: {generate_random_text(1)}"
@@ -76,10 +71,29 @@ def create_barcode_image(filename: str, doc_width: int, doc_height: int) -> None
             text = generate_random_text(2)
         add_text_to_image(draw, text, (doc_width - 120, 20 + i * 12), font_small)
 
+    # Large text
     large_text = random.choice(
         [str(random.randint(10, 99)), generate_random_word(2).upper()]
     )
     add_text_to_image(draw, large_text, (doc_width - 60, doc_height - 80), font_large)
+
+    # Bottom text
+    bottom_x_start = doc_width - 200
+    bottom_x_end = doc_width - 20
+    bottom_text = generate_random_text(3)
+    add_text_to_image(draw, bottom_text, (bottom_x_start, doc_height - 28), font_small)
+    draw_horizontal_line(doc_height - 20, bottom_x_start, bottom_x_end)
+
+
+def create_barcode_image(filename: str, doc_width: int, doc_height: int) -> None:
+    background = Image.new("RGB", (doc_width, doc_height), color="white")
+    draw = ImageDraw.Draw(background)
+
+    font_small = ImageFont.truetype("opensans.ttf", 8)
+    font_medium = ImageFont.truetype("opensans.ttf", 10)
+    font_large = ImageFont.truetype("opensans.ttf", 48)
+
+    add_text_and_lines(draw, doc_width, doc_height, font_small, font_medium, font_large)
 
     barcode_data = generate_random_number()
     options = {
@@ -101,19 +115,6 @@ def create_barcode_image(filename: str, doc_width: int, doc_height: int) -> None
     barcode_y = doc_height - barcode_img.height - 10
     barcode_width = barcode_img.width
     barcode_height = barcode_img.height - 35
-
-    # Draw the bounding box
-    # draw.rectangle(
-    #     [barcode_x, barcode_y, barcode_x + barcode_width, barcode_y + barcode_height],
-    #     outline="red",
-    #     width=2,
-    # )
-
-    bottom_x_start = doc_width - 200
-    bottom_x_end = doc_width - 20
-    bottom_text = generate_random_text(3)
-    add_text_to_image(draw, bottom_text, (bottom_x_start, doc_height - 28), font_small)
-    draw_horizontal_line(doc_height - 20, bottom_x_start, bottom_x_end)
 
     # Update the save location and file extension
     os.makedirs("training/images", exist_ok=True)
