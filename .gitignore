@@ -1,5 +1,7 @@
 .venv
 training
 runs
+samples
 barcode.yaml
+yolo.pt
 __pycache__

@@ -14,7 +14,9 @@ from utils import (
 )
 
 
-def add_text_and_lines(draw, doc_width, doc_height, font_small, font_medium, font_large):
+def add_text_and_lines(
+    draw, doc_width, doc_height, font_small, font_medium, font_large
+):
     def draw_horizontal_line(y_position, x_start, x_end):
         draw.line([(x_start, y_position), (x_end, y_position)], fill="black", width=1)
 
