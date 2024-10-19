@@ -1,6 +1,6 @@
 import os
 from doctype1 import create_barcode_image
-from yolo_detector import setup_yolo_detector, train_yolo_detector
+from yolo_localizer import setup_yolo_detector, train_yolo_detector
 
 DOC_WIDTH = 640
 DOC_HEIGHT = 320
