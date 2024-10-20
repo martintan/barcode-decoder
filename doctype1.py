@@ -182,8 +182,10 @@ def add_scan_effects(image_path: str):
     final_image = np.clip(uneven_image, 0, 255).astype(np.uint8)
 
     # Add blur to simulate less clear areas
-    blur_kernel = np.random.randint(1, 3, size=final_image.shape)
-    final_image = cv2.blur(final_image, (3, 3), borderType=cv2.BORDER_REFLECT)
+    blur_kernel = np.random.randint(1, 3, size=(2,))
+    final_image = cv2.blur(
+        final_image, tuple(blur_kernel), borderType=cv2.BORDER_REFLECT
+    )
 
     image = Image.fromarray(final_image, mode="L")
 
