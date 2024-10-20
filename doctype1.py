@@ -88,7 +88,9 @@ def add_text_and_lines(
     draw_horizontal_line(doc_height - 20, bottom_x_start, bottom_x_end)
 
 
-def create_barcode_image(filename: str, doc_width: int, doc_height: int) -> None:
+def create_barcode_image(
+    training_folder: str, filename: str, doc_width: int, doc_height: int
+) -> None:
     background = Image.new("RGB", (doc_width, doc_height), color="white")
     draw = ImageDraw.Draw(background)
 
@@ -120,8 +122,7 @@ def create_barcode_image(filename: str, doc_width: int, doc_height: int) -> None
     barcode_height = barcode_img.height - 35
 
     # Update the save location and file extension
-    os.makedirs("training/images", exist_ok=True)
-    barcode_path = f"training/images/{filename.rsplit('.', 1)[0]}.jpg"
+    barcode_path = f"{training_folder}/images/{filename.rsplit('.', 1)[0]}.jpg"
     background.save(barcode_path, format="JPEG", quality=95)
 
     # Calculate normalized bounding box coordinates
@@ -136,8 +137,7 @@ def create_barcode_image(filename: str, doc_width: int, doc_height: int) -> None
 
     # Create label file
     label_name = filename.split("/")[-1].rsplit(".", 1)[0]
-    label_path = f"training/labels/{label_name}.txt"
-    os.makedirs("training/labels", exist_ok=True)
+    label_path = f"{training_folder}/labels/{label_name}.txt"
     with open(label_path, "w") as f:
         f.write(
             f"0 {center_x:.6f} {center_y:.6f} {norm_barcode_width:.6f} {norm_barcode_height:.6f}"
@@ -212,19 +212,23 @@ def create_brightness_map(shape):
     return brightness_map, alpha
 
 
-def generate_training_images(num_images: int, output_folder: str) -> None:
-    if os.path.exists(output_folder):
-        for root, dirs, files in os.walk(output_folder, topdown=False):
-            for file in files:
-                os.unlink(os.path.join(root, file))
-            for dir in dirs:
-                os.rmdir(os.path.join(root, dir))
+def generate_training_images(num_images: int, training_folder: str) -> None:
+    images_folder = os.path.join(training_folder, "images")
+    labels_folder = os.path.join(training_folder, "labels")
+    os.makedirs(labels_folder, exist_ok=True)
+    os.makedirs(images_folder, exist_ok=True)
+    existing_images = len([f for f in os.listdir(images_folder) if f.endswith(".jpg")])
+    images_to_generate = max(0, num_images - existing_images)
 
-    os.makedirs(output_folder, exist_ok=True)
+    print(
+        f"Found {existing_images} existing images. Generating {images_to_generate} new images."
+    )
 
-    for i in range(num_images):
-        create_barcode_image(f"barcode_{i+1}.png", DOC_WIDTH, DOC_HEIGHT)
-        print(f"Generated image {i+1}/{num_images}")
+    for i in range(existing_images, num_images):
+        image_number = i + 1
+        image_filename = f"barcode_{image_number}.png"
+        create_barcode_image(training_folder, image_filename, DOC_WIDTH, DOC_HEIGHT)
+        print(f"Generated image {image_number}/{num_images}")
 
 
 def add_noise(image_array):
