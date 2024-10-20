@@ -1,4 +1,5 @@
 .venv
+env
 training
 runs
 samples
