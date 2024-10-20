@@ -146,42 +146,29 @@ def create_barcode_image(filename: str, doc_width: int, doc_height: int) -> None
     add_scan_effects(barcode_path)
 
 
-def add_scan_effects(image_path: str):
+def add_scan_effects(image_path: str, apply_noise: bool = False):
     image = Image.open(image_path)
-
-    # Convert to grayscale
     image = image.convert("L")
 
-    # Create subtle noise
-    noise = np.random.choice([0, 127, 255], size=(image.height, image.width)).astype(
-        np.int16
-    )
+    image_array = np.array(image, dtype=np.int16)
 
-    # Apply noise to the image
-    image_array = np.array(
-        image, dtype=np.int16
-    )  # Convert to int16 to allow for negative values
+    if apply_noise:
+        noisy_image = add_noise(image_array)
+    else:
+        noisy_image = image_array
 
-    # Create a mask for 2.5% of pixels
-    random_mask = np.random.random(image_array.shape) < 0.025
+    brightness_map, alpha = create_brightness_map(image_array.shape)
 
-    # Apply noise only to the masked pixels
-    noisy_image = image_array.copy()
-    noisy_image[random_mask] = noise[random_mask]
+    image_array = image_array.astype(float)
 
-    # Create more severe uneven brightness effect
-    brightness_map = np.random.normal(loc=1.0, scale=0.2, size=image_array.shape)
-    brightness_map = np.clip(
-        brightness_map, 0.5, 1.5
-    )  # Increase the brightness variation range
+    # Blend original image with brightness map using pixel-wise alpha
+    blended_image = (1 - alpha) * noisy_image + alpha * (brightness_map * 255)
 
-    # Apply brightness map to the noisy image
-    uneven_image = noisy_image * brightness_map
+    # Apply damaged pixels effect
+    blended_image = apply_damaged_pixels(blended_image)
 
-    # Clip values to ensure they're in the valid range and convert back to uint8
-    final_image = np.clip(uneven_image, 0, 255).astype(np.uint8)
+    final_image = np.clip(blended_image, 0, 255).astype(np.uint8)
 
-    # Add blur to simulate less clear areas
     blur_kernel = np.random.randint(1, 3, size=(2,))
     final_image = cv2.blur(
         final_image, tuple(blur_kernel), borderType=cv2.BORDER_REFLECT
@@ -189,12 +176,40 @@ def add_scan_effects(image_path: str):
 
     image = Image.fromarray(final_image, mode="L")
 
-    # Ensure the image is in the same mode as the original
+    # Convert back to original mode if it wasn't grayscale
     original_mode = Image.open(image_path).mode
-    image = image.convert(original_mode)
+    if original_mode != "L":
+        image = image.convert(original_mode)
 
-    # Save the modified image as JPEG
     image.save(image_path, format="JPEG", quality=95)
+
+
+def create_brightness_map(shape):
+    num_lights = np.random.randint(2, 5)
+    light_centers = np.random.rand(num_lights, 2)
+    light_intensities = np.random.uniform(0.1, 0.4, num_lights)
+
+    y, x = np.ogrid[: shape[0], : shape[1]]
+    brightness_map = np.ones(shape, dtype=float)
+
+    for center, intensity in zip(light_centers, light_intensities):
+        dist_from_center = np.sqrt(
+            (x / shape[1] - center[0]) ** 2 + (y / shape[0] - center[1]) ** 2
+        )
+        light_effect = np.exp(-dist_from_center * 1.2) * intensity
+        brightness_map += light_effect
+
+    # Normalize brightness map and apply a power function to increase bright areas
+    brightness_map = (brightness_map - brightness_map.min()) / (
+        brightness_map.max() - brightness_map.min()
+    )
+    brightness_map = np.power(brightness_map, 0.7)
+
+    # Calculate alpha based on brightness map
+    alpha_min, alpha_max = 0.1, 0.9
+    alpha = alpha_min + (alpha_max - alpha_min) * brightness_map
+
+    return brightness_map, alpha
 
 
 def generate_training_images(num_images: int, output_folder: str) -> None:
@@ -210,6 +225,30 @@ def generate_training_images(num_images: int, output_folder: str) -> None:
     for i in range(num_images):
         create_barcode_image(f"barcode_{i+1}.png", DOC_WIDTH, DOC_HEIGHT)
         print(f"Generated image {i+1}/{num_images}")
+
+
+def add_noise(image_array):
+    noise = np.random.choice([0, 127, 255], size=image_array.shape).astype(np.int16)
+    random_mask = np.random.random(image_array.shape) < 0.0025
+    noisy_image = image_array.copy()
+    noisy_image[random_mask] = noise[random_mask]
+    return noisy_image
+
+
+def apply_damaged_pixels(image_array):
+    damaged_pixels = np.random.random(image_array.shape) < 0.01
+    white_pixels = np.random.random(image_array.shape) < 0.7
+    dark_pixels = np.logical_and(
+        ~white_pixels, np.random.random(image_array.shape) < 0.3
+    )
+    image_array[np.logical_and(damaged_pixels, white_pixels)] = 255
+    dark_intensity = np.random.uniform(0.3, 0.7, size=image_array.shape)
+    dark_pixel_values = np.clip(image_array * dark_intensity, 100, 192)
+    image_array[np.logical_and(damaged_pixels, dark_pixels)] = dark_pixel_values[
+        np.logical_and(damaged_pixels, dark_pixels)
+    ]
+
+    return image_array
 
 
 if __name__ == "__main__":
