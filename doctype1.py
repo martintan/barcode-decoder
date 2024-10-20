@@ -6,6 +6,7 @@ import numpy as np
 import cv2
 import os
 
+from constants import DOC_HEIGHT, DOC_WIDTH
 from utils import (
     add_text_to_image,
     generate_random_number,
@@ -194,6 +195,21 @@ def add_scan_effects(image_path: str):
     image.save(image_path, format="JPEG", quality=95)
 
 
+def generate_training_images(num_images: int, output_folder: str) -> None:
+    if os.path.exists(output_folder):
+        for root, dirs, files in os.walk(output_folder, topdown=False):
+            for file in files:
+                os.unlink(os.path.join(root, file))
+            for dir in dirs:
+                os.rmdir(os.path.join(root, dir))
+
+    os.makedirs(output_folder, exist_ok=True)
+
+    for i in range(num_images):
+        create_barcode_image(f"barcode_{i+1}.png", DOC_WIDTH, DOC_HEIGHT)
+        print(f"Generated image {i+1}/{num_images}")
+
+
 if __name__ == "__main__":
-    output_path = "training/images/barcode_image.jpg"
-    create_barcode_image(output_path)
+    generate_training_images(5, "training")
+    print("Training image generation complete.")
