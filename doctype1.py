@@ -5,6 +5,7 @@ import random
 import numpy as np
 import cv2
 import os
+import shutil
 
 from constants import DOC_HEIGHT, DOC_WIDTH
 from utils import (
@@ -162,7 +163,10 @@ def add_scan_effects(image_path: str, apply_noise: bool = False):
     image_array = image_array.astype(float)
 
     # Blend original image with brightness map using pixel-wise alpha
-    blended_image = (1 - alpha) * noisy_image + alpha * (brightness_map * 255)
+    if apply_noise:
+        blended_image = (1 - alpha) * noisy_image + alpha * (brightness_map * 255)
+    else:
+        blended_image = (1 - alpha) * image_array + alpha * (brightness_map * 255)
 
     # Apply damaged pixels effect
     blended_image = apply_damaged_pixels(blended_image)
@@ -212,23 +216,34 @@ def create_brightness_map(shape):
     return brightness_map, alpha
 
 
-def generate_training_images(num_images: int, training_folder: str) -> None:
+def generate_training_images(
+    num_images: int, training_folder: str, force_generate: bool = False
+) -> None:
     images_folder = os.path.join(training_folder, "images")
     labels_folder = os.path.join(training_folder, "labels")
     os.makedirs(labels_folder, exist_ok=True)
     os.makedirs(images_folder, exist_ok=True)
     existing_images = len([f for f in os.listdir(images_folder) if f.endswith(".jpg")])
-    images_to_generate = max(0, num_images - existing_images)
 
-    print(
-        f"Found {existing_images} existing images. Generating {images_to_generate} new images."
-    )
+    if force_generate:
+        shutil.rmtree(training_folder)
+        os.makedirs(labels_folder, exist_ok=True)
+        os.makedirs(images_folder, exist_ok=True)
+        images_to_generate = num_images
+        start_index = 0
+        print(f"Force generate mode: Generating {num_images} new images.")
+    else:
+        images_to_generate = max(0, num_images - existing_images)
+        start_index = existing_images
+        print(
+            f"Found {existing_images} existing images. Generating {images_to_generate} new images."
+        )
 
-    for i in range(existing_images, num_images):
-        image_number = i + 1
+    for i in range(images_to_generate):
+        image_number = start_index + i + 1
         image_filename = f"barcode_{image_number}.png"
         create_barcode_image(training_folder, image_filename, DOC_WIDTH, DOC_HEIGHT)
-        print(f"Generated image {image_number}/{num_images}")
+        print(f"Generated image {i+1}/{images_to_generate}")
 
 
 def add_noise(image_array):
@@ -240,21 +255,24 @@ def add_noise(image_array):
 
 
 def apply_damaged_pixels(image_array):
-    damaged_pixels = np.random.random(image_array.shape) < 0.01
-    white_pixels = np.random.random(image_array.shape) < 0.7
+    damaged_pixel_probability = 0.01
+    damaged_pixels = np.random.random(image_array.shape) < damaged_pixel_probability
+    white_pixel_probability = np.random.uniform(0.01, 0.5)
+
+    # Apply white pixels regardless of damaged pixels
+    white_pixels = np.random.random(image_array.shape) < white_pixel_probability
+    image_array[white_pixels] = 255
+
+    # Apply dark pixels only to damaged areas
     dark_pixels = np.logical_and(
-        ~white_pixels, np.random.random(image_array.shape) < 0.3
+        damaged_pixels, np.random.random(image_array.shape) < 0.3
     )
-    image_array[np.logical_and(damaged_pixels, white_pixels)] = 255
     dark_intensity = np.random.uniform(0.3, 0.7, size=image_array.shape)
     dark_pixel_values = np.clip(image_array * dark_intensity, 100, 192)
-    image_array[np.logical_and(damaged_pixels, dark_pixels)] = dark_pixel_values[
-        np.logical_and(damaged_pixels, dark_pixels)
-    ]
+    image_array[dark_pixels] = dark_pixel_values[dark_pixels]
 
     return image_array
 
-
 if __name__ == "__main__":
-    generate_training_images(5, "training")
+    generate_training_images(5, "training", force_generate=True)
     print("Training image generation complete.")
