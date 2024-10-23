@@ -9,7 +9,10 @@ import shutil
 
 from constants import DOC_HEIGHT, DOC_WIDTH
 from utils import (
+    apply_noise_effect,
     add_text_to_image,
+    apply_brightness_effect,
+    apply_pixel_damage_effect,
     generate_random_number,
     generate_random_text,
     generate_random_word,
@@ -147,23 +150,13 @@ def create_barcode_image(
     add_scan_effects(barcode_path)
 
 
-def add_scan_effects(
-    image_path: str, apply_brightness: bool = False, apply_noise: bool = False
-):
+def add_scan_effects(image_path: str):
     image = Image.open(image_path)
     image = image.convert("L")
 
     image_array = np.array(image, dtype=np.float32)
 
-    if apply_noise:
-        image_array = add_noise(image_array)
-
-    if apply_brightness:
-        brightness_map, alpha = create_brightness_map(image_array.shape)
-        image_array = (1 - alpha) * image_array + alpha * (brightness_map * 255)
-
-    # Apply damaged pixels effect
-    image_array = apply_damaged_pixels(image_array)
+    image_array = apply_pixel_damage_effect(image_array)
 
     final_image = np.clip(image_array, 0, 255).astype(np.uint8)
 
@@ -180,34 +173,6 @@ def add_scan_effects(
         image = image.convert(original_mode)
 
     image.save(image_path, format="JPEG", quality=95)
-
-
-def create_brightness_map(shape):
-    num_lights = np.random.randint(2, 5)
-    light_centers = np.random.rand(num_lights, 2)
-    light_intensities = np.random.uniform(0.1, 0.4, num_lights)
-
-    y, x = np.ogrid[: shape[0], : shape[1]]
-    brightness_map = np.ones(shape, dtype=float)
-
-    for center, intensity in zip(light_centers, light_intensities):
-        dist_from_center = np.sqrt(
-            (x / shape[1] - center[0]) ** 2 + (y / shape[0] - center[1]) ** 2
-        )
-        light_effect = np.exp(-dist_from_center * 1.2) * intensity
-        brightness_map += light_effect
-
-    # Normalize brightness map and apply a power function to increase bright areas
-    brightness_map = (brightness_map - brightness_map.min()) / (
-        brightness_map.max() - brightness_map.min()
-    )
-    brightness_map = np.power(brightness_map, 0.7)
-
-    # Calculate alpha based on brightness map
-    alpha_min, alpha_max = 0.1, 0.9
-    alpha = alpha_min + (alpha_max - alpha_min) * brightness_map
-
-    return brightness_map, alpha
 
 
 def generate_training_images(
@@ -240,33 +205,6 @@ def generate_training_images(
         image_filename = f"barcode_{image_number}.png"
         create_barcode_image(training_folder, image_filename, DOC_WIDTH, DOC_HEIGHT)
         print(f"Generated type1 image {i+1}/{images_to_generate}")
-
-
-def add_noise(image_array):
-    noise = np.random.choice([0, 127, 255], size=image_array.shape).astype(np.float32)
-    random_mask = np.random.random(image_array.shape) < 0.0025
-    image_array[random_mask] = noise[random_mask]
-    return image_array
-
-
-def apply_damaged_pixels(image_array):
-    damaged_pixel_probability = 0.01
-    damaged_pixels = np.random.random(image_array.shape) < damaged_pixel_probability
-    white_pixel_probability = np.random.uniform(0.01, 0.5)
-
-    # Apply white pixels regardless of damaged pixels
-    white_pixels = np.random.random(image_array.shape) < white_pixel_probability
-    image_array[white_pixels] = 255
-
-    # Apply dark pixels only to damaged areas
-    dark_pixels = np.logical_and(
-        damaged_pixels, np.random.random(image_array.shape) < 0.3
-    )
-    dark_intensity = np.random.uniform(0.3, 0.7, size=image_array.shape)
-    dark_pixel_values = np.clip(image_array * dark_intensity, 100, 192)
-    image_array[dark_pixels] = dark_pixel_values[dark_pixels]
-
-    return image_array
 
 
 if __name__ == "__main__":
