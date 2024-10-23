@@ -147,31 +147,23 @@ def create_barcode_image(
     add_scan_effects(barcode_path)
 
 
-def add_scan_effects(image_path: str, apply_noise: bool = False):
+def add_scan_effects(image_path: str, apply_brightness: bool = False, apply_noise: bool = False):
     image = Image.open(image_path)
     image = image.convert("L")
 
-    image_array = np.array(image, dtype=np.int16)
+    image_array = np.array(image, dtype=np.float32)
 
     if apply_noise:
-        noisy_image = add_noise(image_array)
-    else:
-        noisy_image = image_array
+        image_array = add_noise(image_array)
 
-    brightness_map, alpha = create_brightness_map(image_array.shape)
-
-    image_array = image_array.astype(float)
-
-    # Blend original image with brightness map using pixel-wise alpha
-    if apply_noise:
-        blended_image = (1 - alpha) * noisy_image + alpha * (brightness_map * 255)
-    else:
-        blended_image = (1 - alpha) * image_array + alpha * (brightness_map * 255)
+    if apply_brightness:
+        brightness_map, alpha = create_brightness_map(image_array.shape)
+        image_array = (1 - alpha) * image_array + alpha * (brightness_map * 255)
 
     # Apply damaged pixels effect
-    blended_image = apply_damaged_pixels(blended_image)
+    image_array = apply_damaged_pixels(image_array)
 
-    final_image = np.clip(blended_image, 0, 255).astype(np.uint8)
+    final_image = np.clip(image_array, 0, 255).astype(np.uint8)
 
     blur_kernel = np.random.randint(1, 3, size=(2,))
     final_image = cv2.blur(
@@ -217,7 +209,7 @@ def create_brightness_map(shape):
 
 
 def generate_training_images(
-    num_images: int, training_folder: str, force_generate: bool = False
+    num_images: int, training_folder: str, force_generate: bool = False, apply_brightness: bool = True, apply_noise: bool = False
 ) -> None:
     images_folder = os.path.join(training_folder, "images")
     labels_folder = os.path.join(training_folder, "labels")
@@ -247,11 +239,10 @@ def generate_training_images(
 
 
 def add_noise(image_array):
-    noise = np.random.choice([0, 127, 255], size=image_array.shape).astype(np.int16)
+    noise = np.random.choice([0, 127, 255], size=image_array.shape).astype(np.float32)
     random_mask = np.random.random(image_array.shape) < 0.0025
-    noisy_image = image_array.copy()
-    noisy_image[random_mask] = noise[random_mask]
-    return noisy_image
+    image_array[random_mask] = noise[random_mask]
+    return image_array
 
 
 def apply_damaged_pixels(image_array):
@@ -273,6 +264,7 @@ def apply_damaged_pixels(image_array):
 
     return image_array
 
+
 if __name__ == "__main__":
-    generate_training_images(5, "training", force_generate=True)
+    generate_training_images(5, "training", force_generate=True, apply_brightness=True, apply_noise=True)
     print("Training image generation complete.")
