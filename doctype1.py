@@ -147,7 +147,9 @@ def create_barcode_image(
     add_scan_effects(barcode_path)
 
 
-def add_scan_effects(image_path: str, apply_brightness: bool = False, apply_noise: bool = False):
+def add_scan_effects(
+    image_path: str, apply_brightness: bool = False, apply_noise: bool = False
+):
     image = Image.open(image_path)
     image = image.convert("L")
 
@@ -209,33 +211,35 @@ def create_brightness_map(shape):
 
 
 def generate_training_images(
-    num_images: int, training_folder: str, force_generate: bool = False, apply_brightness: bool = True, apply_noise: bool = False
+    num_images: int,
+    training_folder: str,
+    force_generate: bool = False,
+    apply_brightness: bool = True,
+    apply_noise: bool = False,
+    start_index: int = 0,
 ) -> None:
     images_folder = os.path.join(training_folder, "images")
     labels_folder = os.path.join(training_folder, "labels")
     os.makedirs(labels_folder, exist_ok=True)
     os.makedirs(images_folder, exist_ok=True)
-    existing_images = len([f for f in os.listdir(images_folder) if f.endswith(".jpg")])
 
     if force_generate:
-        shutil.rmtree(training_folder)
-        os.makedirs(labels_folder, exist_ok=True)
-        os.makedirs(images_folder, exist_ok=True)
+        # Only clear directories if force_generate and start_index is 0
+        if start_index == 0:
+            shutil.rmtree(training_folder)
+            os.makedirs(labels_folder, exist_ok=True)
+            os.makedirs(images_folder, exist_ok=True)
         images_to_generate = num_images
-        start_index = 0
-        print(f"Force generate mode: Generating {num_images} new images.")
+        print(f"Generating {num_images} type1 images starting at index {start_index}.")
     else:
-        images_to_generate = max(0, num_images - existing_images)
-        start_index = existing_images
-        print(
-            f"Found {existing_images} existing images. Generating {images_to_generate} new images."
-        )
+        images_to_generate = num_images
+        print(f"Generating {num_images} type1 images starting at index {start_index}.")
 
     for i in range(images_to_generate):
         image_number = start_index + i + 1
         image_filename = f"barcode_{image_number}.png"
         create_barcode_image(training_folder, image_filename, DOC_WIDTH, DOC_HEIGHT)
-        print(f"Generated image {i+1}/{images_to_generate}")
+        print(f"Generated type1 image {i+1}/{images_to_generate}")
 
 
 def add_noise(image_array):
@@ -266,5 +270,7 @@ def apply_damaged_pixels(image_array):
 
 
 if __name__ == "__main__":
-    generate_training_images(5, "training", force_generate=True, apply_brightness=True, apply_noise=True)
+    generate_training_images(
+        5, "training", force_generate=True, apply_brightness=True, apply_noise=True
+    )
     print("Training image generation complete.")
