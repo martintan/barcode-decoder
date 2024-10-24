@@ -1,21 +1,19 @@
 from barcode import Code128
 from barcode.writer import ImageWriter
-from PIL import Image, ImageDraw, ImageFont, ImageFilter
+from PIL import Image, ImageDraw, ImageFont
 import random
-import numpy as np
-import cv2
-import os
-import shutil
 
-from constants import DOC_HEIGHT, DOC_WIDTH
 from utils import (
-    apply_noise_effect,
+    apply_blur_effect,
     add_text_to_image,
-    apply_brightness_effect,
     apply_pixel_damage_effect,
+    generate_training_images,
+    np_to_pil_grayscale,
+    pil_to_np_grayscale,
     generate_random_number,
     generate_random_text,
     generate_random_word,
+    save_pil_jpeg,
 )
 
 
@@ -92,7 +90,7 @@ def add_text_and_lines(
     draw_horizontal_line(doc_height - 20, bottom_x_start, bottom_x_end)
 
 
-def create_barcode_image(
+def generate_image(
     training_folder: str, filename: str, doc_width: int, doc_height: int
 ) -> None:
     background = Image.new("RGB", (doc_width, doc_height), color="white")
@@ -151,64 +149,19 @@ def create_barcode_image(
 
 
 def add_scan_effects(image_path: str):
-    image = Image.open(image_path)
-    image = image.convert("L")
-
-    image_array = np.array(image, dtype=np.float32)
-
-    image_array = apply_pixel_damage_effect(image_array)
-
-    final_image = np.clip(image_array, 0, 255).astype(np.uint8)
-
-    blur_kernel = np.random.randint(1, 3, size=(2,))
-    final_image = cv2.blur(
-        final_image, tuple(blur_kernel), borderType=cv2.BORDER_REFLECT
-    )
-
-    image = Image.fromarray(final_image, mode="L")
-
-    # Convert back to original mode if it wasn't grayscale
-    original_mode = Image.open(image_path).mode
-    if original_mode != "L":
-        image = image.convert(original_mode)
-
-    image.save(image_path, format="JPEG", quality=95)
-
-
-def generate_training_images(
-    num_images: int,
-    training_folder: str,
-    force_generate: bool = False,
-    apply_brightness: bool = True,
-    apply_noise: bool = False,
-    start_index: int = 0,
-) -> None:
-    images_folder = os.path.join(training_folder, "images")
-    labels_folder = os.path.join(training_folder, "labels")
-    os.makedirs(labels_folder, exist_ok=True)
-    os.makedirs(images_folder, exist_ok=True)
-
-    if force_generate:
-        # Only clear directories if force_generate and start_index is 0
-        if start_index == 0:
-            shutil.rmtree(training_folder)
-            os.makedirs(labels_folder, exist_ok=True)
-            os.makedirs(images_folder, exist_ok=True)
-        images_to_generate = num_images
-        print(f"Generating {num_images} type1 images starting at index {start_index}.")
-    else:
-        images_to_generate = num_images
-        print(f"Generating {num_images} type1 images starting at index {start_index}.")
-
-    for i in range(images_to_generate):
-        image_number = start_index + i + 1
-        image_filename = f"barcode_{image_number}.png"
-        create_barcode_image(training_folder, image_filename, DOC_WIDTH, DOC_HEIGHT)
-        print(f"Generated type1 image {i+1}/{images_to_generate}")
+    image = pil_to_np_grayscale(image_path)
+    image = apply_pixel_damage_effect(image)
+    image = apply_blur_effect(image)
+    image = np_to_pil_grayscale(image)
+    save_pil_jpeg(image, image_path)
 
 
 if __name__ == "__main__":
     generate_training_images(
-        5, "training", force_generate=True, apply_brightness=True, apply_noise=True
+        generate_func=generate_image,
+        num_images=5,
+        training_folder="training",
+        force_generate=True,
+        start_index=0,
     )
     print("Training image generation complete.")

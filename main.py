@@ -1,7 +1,6 @@
 import os
 import sys
 from constants import DOC_HEIGHT, DOC_WIDTH
-from doctype1 import generate_training_images
 from yolo_localizer import (
     load_yolo_model,
     localize_barcode_in_image,
@@ -100,23 +99,27 @@ if __name__ == "__main__":
 
             # Generate type1 documents starting at index 0
             from doctype1 import generate_training_images as gen_type1
+
             gen_type1(
-                type1_count, 
-                training_folder="training", 
+                type1_count,
+                training_folder="training",
                 force_generate=True,
-                start_index=0
+                start_index=0,
             )
 
             # Generate type2 documents starting after type1
             from doctype2 import generate_training_images as gen_type2
+
             gen_type2(
-                type2_count, 
-                training_folder="training", 
+                type2_count,
+                training_folder="training",
                 force_generate=False,  # Don't force generate since we want to keep type1
-                start_index=type1_count
+                start_index=type1_count,
             )
 
-            print(f"Training image generation complete. Generated {type1_count} type1 and {type2_count} type2 images.")
+            print(
+                f"Training image generation complete. Generated {type1_count} type1 and {type2_count} type2 images."
+            )
 
             yolo_model = setup_yolo_detector(DOC_WIDTH, DOC_HEIGHT)
             train_yolo_detector(yolo_model, DOC_WIDTH, DOC_HEIGHT)

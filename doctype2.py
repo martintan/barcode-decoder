@@ -3,16 +3,18 @@ from barcode.writer import ImageWriter
 from PIL import Image, ImageDraw, ImageFont
 import random
 from datetime import datetime, timedelta
-import os
-import shutil
-import math
 
-from constants import DOC_HEIGHT, DOC_WIDTH
-from doctype1 import add_scan_effects
 from utils import (
     add_text_to_image,
+    apply_blur_effect,
+    apply_pixel_damage_effect,
     generate_random_number,
     generate_random_text,
+    generate_signature_scribble,
+    generate_training_images,
+    np_to_pil_grayscale,
+    pil_to_np_grayscale,
+    save_pil_jpeg,
 )
 
 
@@ -223,7 +225,7 @@ def add_text_and_lines_lbc(
     add_text_to_image(draw, "Date", (400, sig_y), font_small)
 
 
-def create_lbc_document(
+def generate_image(
     training_folder: str, filename: str, doc_width: int, doc_height: int
 ) -> None:
     # Reuse most of create_barcode_image but modify barcode position
@@ -291,112 +293,20 @@ def create_lbc_document(
     add_scan_effects(barcode_path, apply_brightness=False, apply_noise=False)
 
 
-def generate_signature_scribble(draw, start_x, start_y, width):
-    def generate_bezier_curve(points, num_steps=50):
-        curve_points = []
-        for t in range(num_steps):
-            t = t / (num_steps - 1)
-            x = (
-                (1 - t) ** 3 * points[0][0]
-                + 3 * (1 - t) ** 2 * t * points[1][0]
-                + 3 * (1 - t) * t**2 * points[2][0]
-                + t**3 * points[3][0]
-            )
-            y = (
-                (1 - t) ** 3 * points[0][1]
-                + 3 * (1 - t) ** 2 * t * points[1][1]
-                + 3 * (1 - t) * t**2 * points[2][1]
-                + t**3 * points[3][1]
-            )
-            curve_points.append((int(x), int(y)))
-        return curve_points
+def add_scan_effects(image_path: str):
+    image = pil_to_np_grayscale(image_path)
+    image = apply_pixel_damage_effect(image)
+    image = apply_blur_effect(image)
+    image = np_to_pil_grayscale(image)
+    save_pil_jpeg(image, image_path)
 
-    # Generate multiple strokes for a more natural signature
-    num_strokes = random.randint(2, 4)
-
-    for stroke in range(num_strokes):
-        # Increased vertical variation
-        x_offset = random.randint(-15, 15)
-        y_offset = random.randint(-20, 20)  # Increased range
-
-        p0 = (start_x + x_offset, start_y + y_offset)
-        p1 = (
-            start_x + width // 3 + random.randint(-30, 30),
-            start_y + random.randint(-25, 25),
-        )  # More vertical variation
-        p2 = (
-            start_x + 2 * width // 3 + random.randint(-30, 30),
-            start_y + random.randint(-25, 25),
-        )  # More vertical variation
-        p3 = (
-            start_x + width + random.randint(-15, 15),
-            start_y + random.randint(-20, 20),
-        )  # More vertical variation
-
-        # Generate and draw the curve
-        curve_points = generate_bezier_curve([p0, p1, p2, p3])
-
-        # More variation in line thickness
-        thickness = random.randint(1, 3)  # Increased max thickness
-        draw.line(curve_points, fill="black", width=thickness)
-
-        # Add more varied decorative strokes
-        for _ in range(random.randint(1, 3)):  # Multiple decorative strokes
-            if random.random() < 0.8:  # Increased probability
-                x = start_x + random.randint(0, width)
-                y = start_y + random.randint(-20, 20)  # Increased vertical range
-                length = random.randint(15, 40)  # Longer strokes
-                angle = random.randint(-60, 60)  # More extreme angles
-                end_x = x + length * math.cos(math.radians(angle))
-                end_y = y + length * math.sin(math.radians(angle))
-                draw.line(
-                    [(x, y), (int(end_x), int(end_y))],
-                    fill="black",
-                    width=random.randint(1, 2),
-                )
-
-
-def generate_training_images(
-    num_images: int,
-    training_folder: str,
-    force_generate: bool = False,
-    apply_brightness: bool = True,
-    apply_noise: bool = True,
-    start_index: int = 0,
-) -> None:
-    images_folder = os.path.join(training_folder, "images")
-    labels_folder = os.path.join(training_folder, "labels")
-    os.makedirs(labels_folder, exist_ok=True)
-    os.makedirs(images_folder, exist_ok=True)
-
-    if force_generate:
-        # Only clear directories if force_generate and start_index is 0
-        if start_index == 0:
-            shutil.rmtree(training_folder)
-            os.makedirs(labels_folder, exist_ok=True)
-            os.makedirs(images_folder, exist_ok=True)
-        images_to_generate = num_images
-        print(f"Generating {num_images} type2 images starting at index {start_index}.")
-    else:
-        images_to_generate = num_images
-        print(f"Generating {num_images} type2 images starting at index {start_index}.")
-
-    for i in range(images_to_generate):
-        image_number = start_index + i + 1
-        image_filename = f"barcode_{image_number}.png"
-        create_lbc_document(training_folder, image_filename, DOC_WIDTH, DOC_HEIGHT)
-        print(f"Generated type2 image {i+1}/{images_to_generate}")
-
-
-# Reuse other functions from doctype1.py:
-# - add_scan_effects()
-# - create_brightness_map()
-# - generate_training_images() (with modified create_document function)
-# - add_noise()
-# - apply_damaged_pixels()
 
 if __name__ == "__main__":
     generate_training_images(
-        5, "training", force_generate=True, apply_brightness=True, apply_noise=True
+        generate_func=generate_image,
+        num_images=5,
+        training_folder="training",
+        force_generate=True,
+        start_index=0,
     )
-    print("LBC document generation complete.")
+    print("Document Type 2 generation complete.")
