@@ -3,7 +3,7 @@ import os
 import random
 import shutil
 import string
-from typing import Any
+from typing import Any, Callable
 import PIL
 import cv2
 import numpy as np
@@ -185,7 +185,7 @@ def generate_signature_scribble(
 
 
 def generate_training_images(
-    generate_func,
+    generate_func: Callable[[str, str, int, int], None],
     num_images: int,
     training_folder: str,
     force_generate: bool = False,
