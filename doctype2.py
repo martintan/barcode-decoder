@@ -12,15 +12,20 @@ from utils import (
     generate_random_text,
     generate_signature_scribble,
     generate_training_images,
+    load_all_fonts,
     np_to_pil_grayscale,
     pil_to_np_grayscale,
     save_pil_jpeg,
 )
 
 
-def add_text_and_lines_lbc(
-    draw, doc_width, doc_height, font_small, font_medium, font_large, font_extra_large
+def add_text_and_lines(
+    draw,
+    doc_width,
+    doc_height,
 ):
+    font_small, font_medium, font_large, font_extra_large = load_all_fonts()
+
     def draw_horizontal_line(y_position, x_start, x_end):
         draw.line([(x_start, y_position), (x_end, y_position)], fill="black", width=1)
 
@@ -232,11 +237,6 @@ def generate_image(
     background = Image.new("RGB", (doc_width, doc_height), color="white")
     draw = ImageDraw.Draw(background)
 
-    font_small = ImageFont.truetype("opensans.ttf", 8)
-    font_medium = ImageFont.truetype("opensans.ttf", 10)
-    font_large = ImageFont.truetype("opensans_bold.ttf", 30)
-    font_extra_large = ImageFont.truetype("opensans_bold.ttf", 48)
-
     # Generate and add barcode at top center
     barcode_data = generate_random_number()
     options = {
@@ -256,14 +256,10 @@ def generate_image(
     barcode_y = 20
     background.paste(barcode_img, (barcode_x, barcode_y))
 
-    add_text_and_lines_lbc(
+    add_text_and_lines(
         draw,
         doc_width,
         doc_height,
-        font_small,
-        font_medium,
-        font_large,
-        font_extra_large,
     )
 
     # Save and process image (reuse existing code)

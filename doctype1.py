@@ -8,6 +8,7 @@ from utils import (
     add_text_to_image,
     apply_pixel_damage_effect,
     generate_training_images,
+    load_all_fonts,
     np_to_pil_grayscale,
     pil_to_np_grayscale,
     generate_random_number,
@@ -17,9 +18,9 @@ from utils import (
 )
 
 
-def add_text_and_lines(
-    draw, doc_width, doc_height, font_small, font_medium, font_large
-):
+def add_text_and_lines(draw, doc_width, doc_height):
+    font_small, font_medium, font_large = load_all_fonts()
+
     def draw_horizontal_line(y_position, x_start, x_end):
         draw.line([(x_start, y_position), (x_end, y_position)], fill="black", width=1)
 
@@ -96,11 +97,7 @@ def generate_image(
     background = Image.new("RGB", (doc_width, doc_height), color="white")
     draw = ImageDraw.Draw(background)
 
-    font_small = ImageFont.truetype("opensans.ttf", 8)
-    font_medium = ImageFont.truetype("opensans.ttf", 10)
-    font_large = ImageFont.truetype("opensans.ttf", 48)
-
-    add_text_and_lines(draw, doc_width, doc_height, font_small, font_medium, font_large)
+    add_text_and_lines(draw, doc_width, doc_height)
 
     barcode_data = generate_random_number()
     options = {

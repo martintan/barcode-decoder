@@ -213,3 +213,11 @@ def generate_training_images(
         image_filename = f"barcode_{image_number}.png"
         generate_func(training_folder, image_filename, DOC_WIDTH, DOC_HEIGHT)
         print(f"Generated image {i+1}/{images_to_generate}")
+
+
+def load_all_fonts() -> tuple:
+    font_small = PIL.ImageFont.truetype("opensans.ttf", 8)
+    font_medium = PIL.ImageFont.truetype("opensans.ttf", 10)
+    font_large = PIL.ImageFont.truetype("opensans_bold.ttf", 30)
+    font_extra_large = PIL.ImageFont.truetype("opensans_bold.ttf", 48)
+    return font_small, font_medium, font_large, font_extra_large
