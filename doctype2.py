@@ -1,3 +1,4 @@
+import PIL
 from barcode import Code128
 from barcode.writer import ImageWriter
 from PIL import Image, ImageDraw, ImageFont
@@ -8,6 +9,8 @@ from utils import (
     add_text_to_image,
     apply_blur_effect,
     apply_pixel_damage_effect,
+    draw_horizontal_line,
+    draw_vertical_line,
     generate_random_number,
     generate_random_text,
     generate_signature_scribble,
@@ -20,17 +23,10 @@ from utils import (
 
 
 def add_text_and_lines(
-    draw,
-    doc_width,
-    doc_height,
-):
+    draw: PIL.ImageDraw.Draw,
+    doc_width: int,
+) -> None:
     font_small, font_medium, font_large, font_extra_large = load_all_fonts()
-
-    def draw_horizontal_line(y_position, x_start, x_end):
-        draw.line([(x_start, y_position), (x_end, y_position)], fill="black", width=1)
-
-    def draw_vertical_line(x_position, y_start, y_end):
-        draw.line([(x_position, y_start), (x_position, y_end)], fill="black", width=1)
 
     # Add LBC logo placeholder (left corner)
     draw.rectangle([(20, 20), (100, 100)], outline="black")
@@ -197,7 +193,7 @@ def add_text_and_lines(
     for header in table_headers:
         # Draw vertical line (except for first column)
         if current_x > 20:
-            draw_vertical_line(current_x, table_y, table_y + (row_height * 4))
+            draw_vertical_line(draw, current_x, table_y, table_y + (row_height * 4))
 
         # Add header text
         add_text_to_image(draw, header, (current_x + 5, table_y + 2), font_small)

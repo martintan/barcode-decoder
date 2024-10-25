@@ -221,3 +221,32 @@ def load_all_fonts() -> tuple:
     font_large = PIL.ImageFont.truetype("opensans_bold.ttf", 30)
     font_extra_large = PIL.ImageFont.truetype("opensans_bold.ttf", 48)
     return font_small, font_medium, font_large, font_extra_large
+
+
+def draw_horizontal_line(
+    draw: PIL.ImageDraw.Draw,
+    start_y: int,
+    start_x: int,
+    end_x: int,
+) -> None:
+    draw.line([(start_x, start_y), (end_x, start_y)], fill="black", width=1)
+
+
+def draw_vertical_line(
+    draw: PIL.ImageDraw.Draw,
+    start_x: int,
+    start_y: int,
+    end_y: int,
+) -> None:
+    draw.line([(start_x, start_y), (start_x, end_y)], fill="black", width=1)
+
+
+def add_text_block(
+    draw: PIL.ImageDraw.Draw,
+    texts: list[str],
+    start_x: int,
+    start_y: int,
+    fonts: list[PIL.ImageFont.FreeTypeFont],
+) -> None:
+    for i, (text, font) in enumerate(zip(texts, fonts)):
+        add_text_to_image(draw, text, (start_x, start_y + i * 12), font)

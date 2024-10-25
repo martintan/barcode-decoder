@@ -4,9 +4,11 @@ from PIL import Image, ImageDraw, ImageFont
 import random
 
 from utils import (
+    add_text_block,
     apply_blur_effect,
     add_text_to_image,
     apply_pixel_damage_effect,
+    draw_horizontal_line,
     generate_training_images,
     load_all_fonts,
     np_to_pil_grayscale,
@@ -20,13 +22,6 @@ from utils import (
 
 def add_text_and_lines(draw, doc_width, doc_height):
     font_small, font_medium, font_large = load_all_fonts()
-
-    def draw_horizontal_line(y_position, x_start, x_end):
-        draw.line([(x_start, y_position), (x_end, y_position)], fill="black", width=1)
-
-    def add_text_block(texts, start_x, start_y, fonts):
-        for i, (text, font) in enumerate(zip(texts, fonts)):
-            add_text_to_image(draw, text, (start_x, start_y + i * 12), font)
 
     left_x_start, left_x_end = 20, 160
     right_x_start, right_x_end = 180, 320
@@ -50,8 +45,8 @@ def add_text_and_lines(draw, doc_width, doc_height):
         elif i == 3:
             texts[2] = f"Contents: {generate_random_text(1)}"
 
-        add_text_block(texts, left_x_start, y_start, fonts)
-        draw_horizontal_line(y_start + 36, left_x_start, left_x_end)
+        add_text_block(draw, texts, left_x_start, y_start, fonts)
+        draw_horizontal_line(draw, y_start + 36, left_x_start, left_x_end)
 
     # Right side text blocks
     for i in range(2):
@@ -66,8 +61,8 @@ def add_text_and_lines(draw, doc_width, doc_height):
         if i == 1:
             texts[1] = generate_random_text(2).upper()
 
-        add_text_block(texts, right_x_start, y_start, fonts)
-        draw_horizontal_line(y_start + 36, right_x_start, right_x_end)
+        add_text_block(draw, texts, right_x_start, y_start, fonts)
+        draw_horizontal_line(draw, y_start + 36, right_x_start, right_x_end)
 
     # Top right text
     for i in range(3):
@@ -88,7 +83,7 @@ def add_text_and_lines(draw, doc_width, doc_height):
     bottom_x_end = doc_width - 20
     bottom_text = generate_random_text(3)
     add_text_to_image(draw, bottom_text, (bottom_x_start, doc_height - 28), font_small)
-    draw_horizontal_line(doc_height - 20, bottom_x_start, bottom_x_end)
+    draw_horizontal_line(draw, doc_height - 20, bottom_x_start, bottom_x_end)
 
 
 def generate_image(
