@@ -8,6 +8,9 @@ import PIL
 import cv2
 import numpy as np
 import PIL
+from PIL.ImageDraw import ImageDraw
+from PIL.Image import Image, fromarray
+from PIL.ImageFont import truetype
 from barcode import Code128
 from barcode.writer import ImageWriter
 
@@ -76,7 +79,7 @@ def apply_noise_effect(image: np.ndarray):
 
 def apply_pixel_damage_effect(
     image: np.ndarray,
-    white_pixel_pct: float = np.random.uniform(0.01, 0.5),
+    white_pixel_pct: float = np.random.uniform(0.005, 0.02),
     dark_pixel_pct: float = 0.01,
 ):
     # Apply white pixels
@@ -106,16 +109,17 @@ def pil_to_np_grayscale(image_path: str) -> np.ndarray:
     return np.array(image, dtype=np.float32)
 
 
-def np_to_pil_grayscale(image: np.ndarray) -> PIL.Image.Image:
-    return PIL.Image.fromarray(image, mode="L")
+def np_to_pil_grayscale(image: np.ndarray) -> Image:
+    image = np.clip(image, 0, 255).astype(np.uint8)
+    return fromarray(image, mode="L")
 
 
-def save_pil_jpeg(pil_image: PIL.Image.Image, path: str):
+def save_pil_jpeg(pil_image: Image, path: str):
     pil_image.save(path, format="JPEG", quality=95)
 
 
 def generate_signature_scribble(
-    draw: PIL.ImageDraw.Draw,
+    draw: ImageDraw,
     start_x: int,
     start_y: int,
     width: int,
@@ -218,15 +222,15 @@ def generate_training_images(
 
 
 def load_all_fonts() -> tuple:
-    font_small = PIL.ImageFont.truetype("opensans.ttf", 8)
-    font_medium = PIL.ImageFont.truetype("opensans.ttf", 10)
-    font_large = PIL.ImageFont.truetype("opensans_bold.ttf", 30)
-    font_extra_large = PIL.ImageFont.truetype("opensans_bold.ttf", 48)
+    font_small = truetype("opensans.ttf", 8)
+    font_medium = truetype("opensans.ttf", 10)
+    font_large = truetype("opensans_bold.ttf", 30)
+    font_extra_large = truetype("opensans_bold.ttf", 48)
     return font_small, font_medium, font_large, font_extra_large
 
 
 def draw_horizontal_line(
-    draw: PIL.ImageDraw.Draw,
+    draw: ImageDraw,
     start_y: int,
     start_x: int,
     end_x: int,
@@ -235,7 +239,7 @@ def draw_horizontal_line(
 
 
 def draw_vertical_line(
-    draw: PIL.ImageDraw.Draw,
+    draw: ImageDraw,
     start_x: int,
     start_y: int,
     end_y: int,
@@ -244,7 +248,7 @@ def draw_vertical_line(
 
 
 def add_text_block(
-    draw: PIL.ImageDraw.Draw,
+    draw: ImageDraw,
     texts: list[str],
     start_x: int,
     start_y: int,
@@ -255,11 +259,11 @@ def add_text_block(
 
 
 def add_barcode(
-    background: PIL.Image.Image,
+    background: Image,
     doc_width: int,
     doc_height: int,
     position: Optional[tuple[int, int]] = None,
-) -> tuple[PIL.Image.Image, tuple[int, int, int, int]]:
+) -> tuple[Image, tuple[int, int, int, int]]:
     """
     Adds a barcode to the image and returns the barcode dimensions.
 
@@ -340,3 +344,54 @@ def create_yolo_label(
         f.write(
             f"0 {center_x:.6f} {center_y:.6f} {norm_barcode_width:.6f} {norm_barcode_height:.6f}"
         )
+
+
+def apply_perspective_warp(
+    image: np.ndarray, warp_intensity: float = 0.1
+) -> np.ndarray:
+    """
+    Applies a perspective warp effect to simulate paper bending during scanning.
+
+    Args:
+        image: Input image as numpy array
+        warp_intensity: Controls the intensity of the warping effect (0.0 to 1.0)
+
+    Returns:
+        Warped image as numpy array
+    """
+    height, width = image.shape[:2]
+
+    # Define the source points (original corners)
+    src_points = np.float32(
+        [
+            [0, 0],  # Top-left
+            [width - 1, 0],  # Top-right
+            [width - 1, height - 1],  # Bottom-right
+            [0, height - 1],  # Bottom-left
+        ]
+    )
+
+    # Calculate random offsets for top corners to simulate paper bend
+    max_offset = int(width * warp_intensity)
+    top_left_offset = random.randint(0, max_offset)
+    top_right_offset = random.randint(0, max_offset)
+
+    # Define destination points with warped top edge
+    dst_points = np.float32(
+        [
+            [0 + top_left_offset, 0 + top_left_offset],  # Top-left (shifted)
+            [width - 1 - top_right_offset, 0 + top_right_offset],  # Top-right (shifted)
+            [width - 1, height - 1],  # Bottom-right (unchanged)
+            [0, height - 1],  # Bottom-left (unchanged)
+        ]
+    )
+
+    # Calculate perspective transform matrix
+    matrix = cv2.getPerspectiveTransform(src_points, dst_points)
+
+    # Apply the perspective transformation
+    warped_image = cv2.warpPerspective(
+        image, matrix, (width, height), borderMode=cv2.BORDER_REPLICATE
+    )
+
+    return warped_image

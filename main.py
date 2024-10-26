@@ -43,25 +43,37 @@ if __name__ == "__main__":
         type2_count = yolo_num_training_images - type1_count
 
         # Generate type1 documents starting at index 0
-        from doctype1 import generate_training_images as gen_type1
-
-        gen_type1(
-            type1_count, training_folder="training", force_generate=True, start_index=0
+        from doctype1 import (
+            generate_training_images as gen_train_type1,
+            generate_image as gen_image_type1,
         )
 
-        # Generate type2 documents starting after type1
-        from doctype2 import generate_training_images as gen_type2
-
-        gen_type2(
-            type2_count,
+        gen_train_type1(
+            generate_func=gen_image_type1,
+            num_images=type1_count,
             training_folder="training",
-            force_generate=False,  # Don't force generate since we want to keep type1
-            start_index=type1_count,
+            force_generate=True,
+            start_index=0,
         )
 
-        print(
-            f"Training image generation complete. Generated {type1_count} type1 and {type2_count} type2 images."
-        )
+        # # Generate type2 documents starting after type1
+        # from doctype2 import (
+        #     generate_training_images as gen_train_type2,
+        #     generate_image as gen_image_type2,
+        # )
+
+        # gen_train_type2(
+        #     generate_func=gen_image_type2,
+        #     num_images=type2_count,
+        #     training_folder="training",
+        #     force_generate=False,
+        #     start_index=type1_count,
+        # )
+
+        # print(
+        #     f"Training image generation complete. Generated {type1_count} type1 and {type2_count} type2 images."
+        # )
+
         sys.exit(0)
 
     if os.path.exists(yolo_model_path):
@@ -98,9 +110,9 @@ if __name__ == "__main__":
             type2_count = yolo_num_training_images - type1_count
 
             # Generate type1 documents starting at index 0
-            from doctype1 import generate_training_images as gen_type1
+            from doctype1 import generate_training_images as gen_train_type1
 
-            gen_type1(
+            gen_train_type1(
                 type1_count,
                 training_folder="training",
                 force_generate=True,

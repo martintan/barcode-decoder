@@ -2,6 +2,8 @@ import PIL
 from PIL import Image, ImageDraw
 import random
 from datetime import datetime, timedelta
+
+import PIL.ImageDraw
 from utils import (
     add_text_to_image,
     apply_blur_effect,
@@ -20,10 +22,7 @@ from utils import (
 )
 
 
-def add_text_and_lines(
-    draw: PIL.ImageDraw.Draw,
-    doc_width: int,
-) -> None:
+def add_text_and_lines(draw: PIL.ImageDraw.Draw, doc_width: int) -> None:
     font_small, font_medium, font_large, font_extra_large = load_all_fonts()
 
     draw.rectangle([(20, 20), (100, 100)], outline="black")
@@ -94,7 +93,12 @@ def add_text_and_lines(
 
         # Draw horizontal line after each row (except the last one)
         if i < len(codes) - 1:
-            draw_horizontal_line(y + row_height, legend_start_x - 10, doc_width - 20)
+            draw_horizontal_line(
+                draw,
+                start_y=y + row_height,
+                start_x=legend_start_x - 10,
+                end_x=doc_width - 20,
+            )
 
     main_y = 120
     field_spacing = 20
@@ -104,19 +108,29 @@ def add_text_and_lines(
         "%m/%d/%y"
     )
     add_text_to_image(draw, f"Dispatch Date:", (20, main_y), font_small)
-    draw_horizontal_line(main_y + 15, 100, 300)
+    draw_horizontal_line(draw, start_y=main_y + 15, start_x=100, end_x=300)
     add_text_to_image(draw, f"PICK UP DATE {date}", (120, main_y), font_medium)
 
     # Merchant details with lines
     merchant_y = main_y + 30
     add_text_to_image(draw, f"Merchant Ref. No:", (20, merchant_y), font_small)
-    draw_horizontal_line(merchant_y + 15, 120, 400)
+    draw_horizontal_line(
+        draw,
+        start_y=merchant_y + 15,
+        start_x=120,
+        end_x=400,
+    )
     add_text_to_image(draw, generate_random_text(8), (120, merchant_y), font_medium)
 
     add_text_to_image(
         draw, f"Merchant Name:", (20, merchant_y + field_spacing), font_small
     )
-    draw_horizontal_line(merchant_y + field_spacing + 15, 120, 400)
+    draw_horizontal_line(
+        draw,
+        start_y=merchant_y + field_spacing + 15,
+        start_x=120,
+        end_x=400,
+    )
     add_text_to_image(
         draw, generate_random_text(12), (120, merchant_y + field_spacing), font_medium
     )
@@ -124,13 +138,26 @@ def add_text_and_lines(
     # Consignee details with lines
     consignee_y = merchant_y + field_spacing * 2
     add_text_to_image(draw, f"Consignee:", (20, consignee_y), font_small)
-    draw_horizontal_line(consignee_y + 15, 100, 400)
+    draw_horizontal_line(
+        draw,
+        start_y=consignee_y + 15,
+        start_x=100,
+        end_x=400,
+    )
     add_text_to_image(draw, generate_random_text(10), (100, consignee_y), font_medium)
 
     add_text_to_image(draw, f"Address:", (20, consignee_y + field_spacing), font_small)
-    draw_horizontal_line(consignee_y + field_spacing + 15, 100, 400)
+    draw_horizontal_line(
+        draw,
+        start_y=consignee_y + field_spacing + 15,
+        start_x=100,
+        end_x=400,
+    )
     add_text_to_image(
-        draw, generate_random_text(10), (100, consignee_y + field_spacing), font_medium
+        draw,
+        generate_random_text(10),
+        (100, consignee_y + field_spacing),
+        font_medium,
     )
 
     # Add delivery attempt table
@@ -170,24 +197,44 @@ def add_text_and_lines(
     # Draw horizontal lines between rows
     for i in range(1, 4):  # 3 data rows
         y = table_y + (row_height * i)
-        draw_horizontal_line(y, 20, doc_width - 20)
+        draw_horizontal_line(
+            draw,
+            start_y=y,
+            start_x=20,
+            end_x=doc_width - 20,
+        )
 
     # Add signature lines at bottom
     sig_y = table_y + 70
 
     # First signature
-    draw_horizontal_line(sig_y, 20, 200)
+    draw_horizontal_line(
+        draw,
+        start_y=sig_y,
+        start_x=20,
+        end_x=200,
+    )
     generate_signature_scribble(draw, 20, sig_y, 200)
     add_text_to_image(draw, "Signature over printed name", (20, sig_y), font_small)
     add_text_to_image(draw, "(First Name / Last Name)", (20, sig_y + 10), font_small)
 
     # Second signature
-    draw_horizontal_line(sig_y, 250, 350)
+    draw_horizontal_line(
+        draw,
+        start_y=sig_y,
+        start_x=250,
+        end_x=350,
+    )
     generate_signature_scribble(draw, 250, sig_y, 100)
     add_text_to_image(draw, generate_random_text(3), (250, sig_y), font_small)
 
     # Third signature
-    draw_horizontal_line(sig_y, 400, 580)
+    draw_horizontal_line(
+        draw,
+        start_y=sig_y,
+        start_x=400,
+        end_x=580,
+    )
     generate_signature_scribble(draw, 400, sig_y, 180)
     date = datetime.now().strftime("%m/%d/%y")
     add_text_to_image(draw, "Date", (400, sig_y), font_small)
@@ -209,10 +256,10 @@ def generate_image(
         position=(barcode_x, 20),
     )
     create_yolo_label(training_folder, filename, doc_width, doc_height, barcode_dims)
-    add_text_and_lines(draw, doc_width, doc_height)
+    add_text_and_lines(draw, doc_width)
     barcode_path = f"{training_folder}/images/{filename.rsplit('.', 1)[0]}.jpg"
     background.save(barcode_path, format="JPEG", quality=95)
-    add_scan_effects(barcode_path, apply_brightness=False, apply_noise=False)
+    add_scan_effects(barcode_path)
 
 
 def add_scan_effects(image_path: str):

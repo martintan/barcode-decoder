@@ -23,7 +23,7 @@ from utils import (
 
 
 def add_text_and_lines(draw, doc_width, doc_height):
-    font_small, font_medium, font_large = load_all_fonts()
+    font_small, font_medium, font_large, _ = load_all_fonts()
 
     left_x_start, left_x_end = 20, 160
     right_x_start, right_x_end = 180, 320
