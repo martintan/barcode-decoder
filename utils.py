@@ -3,11 +3,13 @@ import os
 import random
 import shutil
 import string
-from typing import Any, Callable
+from typing import Any, Callable, Optional
 import PIL
 import cv2
 import numpy as np
 import PIL
+from barcode import Code128
+from barcode.writer import ImageWriter
 
 from constants import DOC_HEIGHT, DOC_WIDTH
 
@@ -250,3 +252,91 @@ def add_text_block(
 ) -> None:
     for i, (text, font) in enumerate(zip(texts, fonts)):
         add_text_to_image(draw, text, (start_x, start_y + i * 12), font)
+
+
+def add_barcode(
+    background: PIL.Image.Image,
+    doc_width: int,
+    doc_height: int,
+    position: Optional[tuple[int, int]] = None,
+) -> tuple[PIL.Image.Image, tuple[int, int, int, int]]:
+    """
+    Adds a barcode to the image and returns the barcode dimensions.
+
+    Args:
+        background: PIL Image to add barcode to
+        doc_width: Width of the document
+        doc_height: Height of the document
+        position: Optional (x,y) tuple for barcode position. If None, places at bottom left.
+
+    Returns:
+        Tuple of (modified image, (barcode_x, barcode_y, barcode_width, barcode_height))
+    """
+    barcode_data = generate_random_number()
+    options = {
+        "module_width": 0.12,
+        "module_height": 2.4,
+        "font_size": 2,
+        "text_distance": 1,
+        "foreground": "black",
+        "center_text": True,
+        "quiet_zone": 0,
+    }
+    barcode = Code128(barcode_data, writer=ImageWriter())
+    barcode_img = barcode.render(options, text=barcode_data)
+
+    barcode_x = 0
+    barcode_y = 0
+
+    # Set barcode position
+    if position:
+        barcode_x, barcode_y = position
+    else:
+        barcode_x = 20
+        barcode_y = doc_height - barcode_img.height - 20
+
+    background.paste(barcode_img, (barcode_x, barcode_y))
+
+    # Calculate dimensions for bounding box
+    barcode_width = barcode_img.width
+    barcode_height = barcode_img.height - 35
+
+    return background, (barcode_x, barcode_y, barcode_width, barcode_height)
+
+
+def create_yolo_label(
+    training_folder: str,
+    filename: str,
+    doc_width: int,
+    doc_height: int,
+    barcode_dims: tuple[int, int, int, int],
+) -> None:
+    """
+    Creates a YOLO format label file for the barcode location.
+
+    Args:
+        training_folder: Folder path for saving files
+        filename: Name of the file
+        doc_width: Width of the document
+        doc_height: Height of the document
+        barcode_dims: Tuple of (x, y, width, height) of the barcode
+    """
+    barcode_x, barcode_y, barcode_width, barcode_height = barcode_dims
+
+    # Calculate normalized coordinates
+    norm_barcode_x = barcode_x / doc_width
+    norm_barcode_y = barcode_y / doc_height
+    norm_barcode_width = barcode_width / doc_width
+    norm_barcode_height = barcode_height / doc_height
+
+    # Calculate center coordinates
+    center_x = norm_barcode_x + (norm_barcode_width / 2)
+    center_y = norm_barcode_y + (norm_barcode_height / 2)
+
+    # Create label file
+    label_name = filename.split("/")[-1].rsplit(".", 1)[0]
+    label_path = f"{training_folder}/labels/{label_name}.txt"
+    with open(label_path, "w") as f:
+        f.write(
+            f"0 {center_x:.6f} {center_y:.6f} {norm_barcode_width:.6f} {norm_barcode_height:.6f}"
+        )

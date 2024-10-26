@@ -19,6 +19,8 @@ from utils import (
     np_to_pil_grayscale,
     pil_to_np_grayscale,
     save_pil_jpeg,
+    add_barcode,
+    create_yolo_label,
 )
 
 
@@ -227,61 +229,24 @@ def add_text_and_lines(
 
 
 def generate_image(
-    training_folder: str, filename: str, doc_width: int, doc_height: int
+    training_folder: str,
+    filename: str,
+    doc_width: int,
+    doc_height: int,
 ) -> None:
-    # Reuse most of create_barcode_image but modify barcode position
     background = Image.new("RGB", (doc_width, doc_height), color="white")
     draw = ImageDraw.Draw(background)
-
-    # Generate and add barcode at top center
-    barcode_data = generate_random_number()
-    options = {
-        "module_width": 0.12,
-        "module_height": 2.4,
-        "font_size": 2,
-        "text_distance": 1,
-        "foreground": "black",
-        "center_text": True,
-        "quiet_zone": 0,
-    }
-    barcode = Code128(barcode_data, writer=ImageWriter())
-    barcode_img = barcode.render(options, text=barcode_data)
-
-    # Center the barcode at the top
-    barcode_x = (doc_width - barcode_img.width) // 2
-    barcode_y = 20
-    background.paste(barcode_img, (barcode_x, barcode_y))
-
-    add_text_and_lines(
-        draw,
+    barcode_x = (doc_width - 200) // 2
+    background, barcode_dims = add_barcode(
+        background,
         doc_width,
         doc_height,
+        position=(barcode_x, 20),
     )
-
-    # Save and process image (reuse existing code)
+    create_yolo_label(training_folder, filename, doc_width, doc_height, barcode_dims)
+    add_text_and_lines(draw, doc_width, doc_height)
     barcode_path = f"{training_folder}/images/{filename.rsplit('.', 1)[0]}.jpg"
     background.save(barcode_path, format="JPEG", quality=95)
-
-    # Calculate normalized bounding box coordinates for YOLO
-    barcode_width = barcode_img.width
-    barcode_height = barcode_img.height - 35
-
-    norm_barcode_x = barcode_x / doc_width
-    norm_barcode_y = barcode_y / doc_height
-    norm_barcode_width = barcode_width / doc_width
-    norm_barcode_height = barcode_height / doc_height
-
-    center_x = norm_barcode_x + (norm_barcode_width / 2)
-    center_y = norm_barcode_y + (norm_barcode_height / 2)
-
-    # Create label file
-    label_name = filename.split("/")[-1].rsplit(".", 1)[0]
-    label_path = f"{training_folder}/labels/{label_name}.txt"
-    with open(label_path, "w") as f:
-        f.write(
-            f"0 {center_x:.6f} {center_y:.6f} {norm_barcode_width:.6f} {norm_barcode_height:.6f}"
-        )
-
     add_scan_effects(barcode_path, apply_brightness=False, apply_noise=False)
 
 
