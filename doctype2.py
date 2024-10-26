@@ -1,17 +1,13 @@
 import PIL
-from barcode import Code128
-from barcode.writer import ImageWriter
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw
 import random
 from datetime import datetime, timedelta
-
 from utils import (
     add_text_to_image,
     apply_blur_effect,
     apply_pixel_damage_effect,
     draw_horizontal_line,
     draw_vertical_line,
-    generate_random_number,
     generate_random_text,
     generate_signature_scribble,
     generate_training_images,
@@ -30,7 +26,6 @@ def add_text_and_lines(
 ) -> None:
     font_small, font_medium, font_large, font_extra_large = load_all_fonts()
 
-    # Add LBC logo placeholder (left corner)
     draw.rectangle([(20, 20), (100, 100)], outline="black")
 
     # Add large bold tracking numbers
@@ -55,16 +50,16 @@ def add_text_and_lines(
     legend_start_x = doc_width - 200
     legend_start_y = 40
     codes = [
-        ("Return Code Legend", "RC"),
-        ("Delivered", "DEL"),
-        ("No ID", "NID"),
-        ("Refuse to Accept", "RTA"),
-        ("Released to Representative", "REP"),
-        ("Consignee Out", "OUT"),
-        ("Moved to Unknown Address", "MOV"),
-        ("Incorrect Address", "INC"),
-        ("Holiday", "HOL"),
-        ("Force of Nature", "FOR"),
+        (generate_random_text(2), generate_random_text(1, max_word_length=3)),
+        (generate_random_text(2), generate_random_text(1, max_word_length=3)),
+        (generate_random_text(2), generate_random_text(1, max_word_length=3)),
+        (generate_random_text(2), generate_random_text(1, max_word_length=3)),
+        (generate_random_text(2), generate_random_text(1, max_word_length=3)),
+        (generate_random_text(2), generate_random_text(1, max_word_length=3)),
+        (generate_random_text(2), generate_random_text(1, max_word_length=3)),
+        (generate_random_text(2), generate_random_text(1, max_word_length=3)),
+        (generate_random_text(2), generate_random_text(1, max_word_length=3)),
+        (generate_random_text(2), generate_random_text(1, max_word_length=3)),
     ]
 
     # Draw legend table
@@ -101,82 +96,53 @@ def add_text_and_lines(
         if i < len(codes) - 1:
             draw_horizontal_line(y + row_height, legend_start_x - 10, doc_width - 20)
 
-    # Add main content
     main_y = 120
-
-    # Merchant details section
-    field_spacing = 20  # Space between fields
+    field_spacing = 20
 
     # Dispatch date and pickup date
     date = (datetime.now() - timedelta(days=random.randint(0, 365))).strftime(
         "%m/%d/%y"
     )
     add_text_to_image(draw, f"Dispatch Date:", (20, main_y), font_small)
-    draw_horizontal_line(main_y + 15, 100, 300)  # Line after Dispatch Date
+    draw_horizontal_line(main_y + 15, 100, 300)
     add_text_to_image(draw, f"PICK UP DATE {date}", (120, main_y), font_medium)
 
     # Merchant details with lines
     merchant_y = main_y + 30
-    add_text_to_image(
-        draw,
-        f"Merchant Ref. No:",
-        (20, merchant_y),
-        font_small,
-    )
-    draw_horizontal_line(merchant_y + 15, 120, 400)  # Line after Merchant Ref
-    add_text_to_image(
-        draw, generate_random_text(8), (120, merchant_y), font_medium
-    )  # Add merchant ref
+    add_text_to_image(draw, f"Merchant Ref. No:", (20, merchant_y), font_small)
+    draw_horizontal_line(merchant_y + 15, 120, 400)
+    add_text_to_image(draw, generate_random_text(8), (120, merchant_y), font_medium)
 
     add_text_to_image(
-        draw,
-        f"Merchant Name:",
-        (20, merchant_y + field_spacing),
-        font_small,
+        draw, f"Merchant Name:", (20, merchant_y + field_spacing), font_small
     )
-    draw_horizontal_line(
-        merchant_y + field_spacing + 15, 120, 400
-    )  # Line after Merchant Name
+    draw_horizontal_line(merchant_y + field_spacing + 15, 120, 400)
     add_text_to_image(
         draw, generate_random_text(12), (120, merchant_y + field_spacing), font_medium
-    )  # Add merchant name
+    )
 
     # Consignee details with lines
     consignee_y = merchant_y + field_spacing * 2
-    add_text_to_image(
-        draw,
-        f"Consignee:",
-        (20, consignee_y),
-        font_small,
-    )
-    draw_horizontal_line(consignee_y + 15, 100, 400)  # Line after Consignee
-    add_text_to_image(
-        draw, generate_random_text(10), (100, consignee_y), font_medium
-    )  # Add consignee name
+    add_text_to_image(draw, f"Consignee:", (20, consignee_y), font_small)
+    draw_horizontal_line(consignee_y + 15, 100, 400)
+    add_text_to_image(draw, generate_random_text(10), (100, consignee_y), font_medium)
 
-    add_text_to_image(
-        draw,
-        f"Address:",
-        (20, consignee_y + field_spacing),
-        font_small,
-    )
-    draw_horizontal_line(
-        consignee_y + field_spacing + 15, 100, 400
-    )  # Line after Address
+    add_text_to_image(draw, f"Address:", (20, consignee_y + field_spacing), font_small)
+    draw_horizontal_line(consignee_y + field_spacing + 15, 100, 400)
     add_text_to_image(
         draw, generate_random_text(10), (100, consignee_y + field_spacing), font_medium
-    )  # Add address
+    )
 
     # Add delivery attempt table
     table_y = main_y + 110
     table_headers = [
-        "Del. Attempt Date",
-        "Del. Status",
-        "Type of ID",
-        "ID no.",
-        "Remarks",
-        "Messenger Name",
-        "Time of Del.",
+        generate_random_text(2),
+        generate_random_text(2),
+        generate_random_text(2),
+        generate_random_text(2),
+        generate_random_text(2),
+        generate_random_text(2),
+        generate_random_text(2),
     ]
 
     # Calculate table dimensions
@@ -212,14 +178,13 @@ def add_text_and_lines(
     # First signature
     draw_horizontal_line(sig_y, 20, 200)
     generate_signature_scribble(draw, 20, sig_y, 200)
-    random_name1 = generate_random_text(10)
     add_text_to_image(draw, "Signature over printed name", (20, sig_y), font_small)
     add_text_to_image(draw, "(First Name / Last Name)", (20, sig_y + 10), font_small)
 
     # Second signature
     draw_horizontal_line(sig_y, 250, 350)
     generate_signature_scribble(draw, 250, sig_y, 100)
-    add_text_to_image(draw, "Relation to Consignee", (250, sig_y), font_small)
+    add_text_to_image(draw, generate_random_text(3), (250, sig_y), font_small)
 
     # Third signature
     draw_horizontal_line(sig_y, 400, 580)
