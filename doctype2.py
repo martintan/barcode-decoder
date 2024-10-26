@@ -7,6 +7,8 @@ import PIL.ImageDraw
 from utils import (
     add_text_to_image,
     apply_blur_effect,
+    apply_fold_warp,
+    apply_perspective_warp,
     apply_pixel_damage_effect,
     draw_horizontal_line,
     draw_vertical_line,
@@ -266,6 +268,8 @@ def add_scan_effects(image_path: str):
     image = pil_to_np_grayscale(image_path)
     image = apply_pixel_damage_effect(image)
     image = apply_blur_effect(image)
+    image = apply_perspective_warp(image)
+    image = apply_fold_warp(image)
     image = np_to_pil_grayscale(image)
     save_pil_jpeg(image, image_path)
 

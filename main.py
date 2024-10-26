@@ -56,23 +56,23 @@ if __name__ == "__main__":
             start_index=0,
         )
 
-        # # Generate type2 documents starting after type1
-        # from doctype2 import (
-        #     generate_training_images as gen_train_type2,
-        #     generate_image as gen_image_type2,
-        # )
+        # Generate type2 documents starting after type1
+        from doctype2 import (
+            generate_training_images as gen_train_type2,
+            generate_image as gen_image_type2,
+        )
 
-        # gen_train_type2(
-        #     generate_func=gen_image_type2,
-        #     num_images=type2_count,
-        #     training_folder="training",
-        #     force_generate=False,
-        #     start_index=type1_count,
-        # )
+        gen_train_type2(
+            generate_func=gen_image_type2,
+            num_images=type2_count,
+            training_folder="training",
+            force_generate=False,
+            start_index=type1_count,
+        )
 
-        # print(
-        #     f"Training image generation complete. Generated {type1_count} type1 and {type2_count} type2 images."
-        # )
+        print(
+            f"Training image generation complete. Generated {type1_count} type1 and {type2_count} type2 images."
+        )
 
         sys.exit(0)
 

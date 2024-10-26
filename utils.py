@@ -79,13 +79,13 @@ def apply_noise_effect(image: np.ndarray):
 
 def apply_pixel_damage_effect(
     image: np.ndarray,
-    white_pixel_pct: float = np.random.uniform(0.005, 0.02),
+    white_pixel_pct: float = np.random.uniform(0.01, 0.03),
     dark_pixel_pct: float = 0.01,
 ):
     # Apply white pixels
     image[
         np.random.random(image.shape)
-        < np.random.uniform(white_pixel_pct, white_pixel_pct * 50)
+        < np.random.uniform(white_pixel_pct, white_pixel_pct * 35)
     ] = 255
 
     # Apply dark pixels to damaged areas
@@ -351,14 +351,19 @@ def apply_perspective_warp(
 ) -> np.ndarray:
     """
     Applies a perspective warp effect to simulate paper bending during scanning.
+    Has a 50% chance of applying the warp effect.
 
     Args:
         image: Input image as numpy array
         warp_intensity: Controls the intensity of the warping effect (0.0 to 1.0)
 
     Returns:
-        Warped image as numpy array
+        Warped image as numpy array, or original image if warp not applied
     """
+    # 50% chance to skip warping
+    if random.random() < 0.5:
+        return image
+
     height, width = image.shape[:2]
 
     # Define the source points (original corners)
@@ -395,3 +400,89 @@ def apply_perspective_warp(
     )
 
     return warped_image
+
+
+def apply_fold_warp(image: np.ndarray, warp_intensity: float = 0.05) -> np.ndarray:
+    """
+    Applies a perspective warp to simulate a diagonal fold across the document,
+    with the top portion warped in a random direction.
+
+    Args:
+        image: Input image as numpy array
+        warp_intensity: Controls the intensity of the warping effect (0.0 to 1.0)
+                       Default reduced to 0.05 for subtler effect
+
+    Returns:
+        Image with diagonal fold effect as numpy array
+    """
+    # 50% chance to skip warping
+    if random.random() < 0.5:
+        return image
+
+    height, width = image.shape[:2]
+
+    # Define the diagonal fold line
+    fold_y = int(random.uniform(0.3, 0.7) * height)
+    fold_angle = random.uniform(-10, 10)  # Reduced angle range from ±15 to ±10
+
+    # Create mask for separating top and bottom portions
+    mask = np.zeros_like(image, dtype=np.float32)
+    for x in range(width):
+        y_offset = int(np.tan(np.radians(fold_angle)) * (x - width / 2))
+        y_fold = min(max(0, fold_y + y_offset), height - 1)
+        mask[:y_fold, x] = 1
+
+    # Calculate warping parameters with reduced displacement
+    max_displacement = int(width * warp_intensity * 0.5)  # Reduced multiplier
+
+    # Find the fold line intersections
+    left_y = fold_y + int(np.tan(np.radians(fold_angle)) * (-width / 2))
+    right_y = fold_y + int(np.tan(np.radians(fold_angle)) * (width / 2))
+
+    # Source points
+    src_points = np.float32([[0, 0], [width - 1, 0], [width - 1, right_y], [0, left_y]])
+
+    # Calculate smaller random displacements
+    top_left_offset = random.randint(-max_displacement, max_displacement)
+    top_right_offset = random.randint(-max_displacement, max_displacement)
+    vertical_offset = int(max_displacement * 0.7)  # Reduced vertical displacement
+
+    # Destination points with reduced warping
+    dst_points = np.float32(
+        [
+            [top_left_offset, vertical_offset],
+            [width - 1 + top_right_offset, vertical_offset],
+            [width - 1, right_y],
+            [0, left_y],
+        ]
+    )
+
+    # Apply perspective transform
+    matrix = cv2.getPerspectiveTransform(src_points, dst_points)
+    warped = cv2.warpPerspective(
+        image, matrix, (width, height), borderMode=cv2.BORDER_REPLICATE
+    )
+
+    # Blend with smoother transition
+    mask = cv2.GaussianBlur(mask, (31, 31), 0)
+    result = image * (1 - mask) + warped * mask
+
+    # Add subtler shadow effect
+    shadow_width = 20  # Reduced from 30
+    shadow_mask = np.zeros_like(mask)
+
+    for x in range(width):
+        y_offset = int(np.tan(np.radians(fold_angle)) * (x - width / 2))
+        y_fold = min(max(0, fold_y + y_offset), height - 1)
+
+        for y in range(
+            max(0, y_fold - shadow_width), min(height, y_fold + shadow_width)
+        ):
+            distance = abs(y - y_fold)
+            shadow_intensity = (1 - distance / shadow_width) * 0.25  # Reduced from 0.4
+            shadow_mask[y, x] = shadow_intensity
+
+    # Apply shadow
+    result = result * (1 - shadow_mask)
+
+    return result.astype(np.uint8)
