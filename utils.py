@@ -16,6 +16,8 @@ from barcode.writer import ImageWriter
 
 from constants import DOC_HEIGHT, DOC_WIDTH
 
+DEBUG_DRAW_BOXES = True
+
 
 def generate_random_number() -> str:
     return "".join(str(random.randint(0, 9)) for _ in range(12))
@@ -103,15 +105,14 @@ def apply_blur_effect(image: np.ndarray):
 
 
 # use this to initialize the image for applying scan effects
-def pil_to_np_grayscale(image_path: str) -> np.ndarray:
-    image = PIL.Image.open(image_path)
+def pil_to_np_grayscale(image: Image) -> np.ndarray:
     image = image.convert("L")
     return np.array(image, dtype=np.float32)
 
 
-def np_to_pil_grayscale(image: np.ndarray) -> Image:
+def np_to_pil(image: np.ndarray, colored: bool = False) -> Image:
     image = np.clip(image, 0, 255).astype(np.uint8)
-    return fromarray(image, mode="L")
+    return fromarray(image, mode="RGB" if colored else "L")
 
 
 def save_pil_jpeg(pil_image: Image, path: str):
@@ -304,6 +305,7 @@ def add_barcode(
     # Calculate dimensions for bounding box
     barcode_width = barcode_img.width
     barcode_height = barcode_img.height - 35
+    barcode_y += 10
 
     return background, (barcode_x, barcode_y, barcode_width, barcode_height)
 
@@ -486,3 +488,18 @@ def apply_fold_warp(image: np.ndarray, warp_intensity: float = 0.05) -> np.ndarr
     result = result * (1 - shadow_mask)
 
     return result.astype(np.uint8)
+
+
+def debug_draw_boxes(image: Image, barcode_dims: tuple[int, int, int, int]):
+    if not DEBUG_DRAW_BOXES:
+        return
+
+    draw = PIL.ImageDraw.Draw(image)
+    draw.rectangle(
+        [
+            (barcode_dims[0], barcode_dims[1]),
+            (barcode_dims[0] + barcode_dims[2], barcode_dims[1] + barcode_dims[3]),
+        ],
+        outline="red",
+        width=1,
+    )

@@ -1,19 +1,22 @@
 from barcode import Code128
 from barcode.writer import ImageWriter
 from PIL import Image, ImageDraw, ImageFont
+from PIL.Image import Image as PILImage
 import random
 
 from utils import (
+    DEBUG_DRAW_BOXES,
     add_text_block,
     apply_blur_effect,
     add_text_to_image,
     apply_fold_warp,
     apply_perspective_warp,
     apply_pixel_damage_effect,
+    debug_draw_boxes,
     draw_horizontal_line,
     generate_training_images,
     load_all_fonts,
-    np_to_pil_grayscale,
+    np_to_pil,
     pil_to_np_grayscale,
     generate_random_number,
     generate_random_text,
@@ -100,20 +103,21 @@ def generate_image(
     draw = ImageDraw.Draw(background)
     add_text_and_lines(draw, doc_width, doc_height)
     background, barcode_dims = add_barcode(background, doc_width, doc_height)
+    image = add_scan_effects(background)
+    debug_draw_boxes(image, barcode_dims)
+    image_path = f"{training_folder}/images/{filename.rsplit('.', 1)[0]}.jpg"
+    save_pil_jpeg(image, image_path)
     create_yolo_label(training_folder, filename, doc_width, doc_height, barcode_dims)
-    barcode_path = f"{training_folder}/images/{filename.rsplit('.', 1)[0]}.jpg"
-    background.save(barcode_path, format="JPEG", quality=95)
-    add_scan_effects(barcode_path)
 
 
-def add_scan_effects(image_path: str):
-    image = pil_to_np_grayscale(image_path)
+def add_scan_effects(image: PILImage) -> PILImage:
+    image = pil_to_np_grayscale(image)
     image = apply_pixel_damage_effect(image)
     image = apply_blur_effect(image)
     image = apply_perspective_warp(image)
     image = apply_fold_warp(image)
-    image = np_to_pil_grayscale(image)
-    save_pil_jpeg(image, image_path)
+    image = np_to_pil(image)
+    return image
 
 
 if __name__ == "__main__":

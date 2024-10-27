@@ -1,8 +1,8 @@
 import PIL
 from PIL import Image, ImageDraw
+from PIL.Image import Image as PILImage
 import random
 from datetime import datetime, timedelta
-
 import PIL.ImageDraw
 from utils import (
     add_text_to_image,
@@ -10,13 +10,14 @@ from utils import (
     apply_fold_warp,
     apply_perspective_warp,
     apply_pixel_damage_effect,
+    debug_draw_boxes,
     draw_horizontal_line,
     draw_vertical_line,
     generate_random_text,
     generate_signature_scribble,
     generate_training_images,
     load_all_fonts,
-    np_to_pil_grayscale,
+    np_to_pil,
     pil_to_np_grayscale,
     save_pil_jpeg,
     add_barcode,
@@ -248,30 +249,28 @@ def generate_image(
     doc_width: int,
     doc_height: int,
 ) -> None:
-    background = Image.new("RGB", (doc_width, doc_height), color="white")
-    draw = ImageDraw.Draw(background)
-    barcode_x = (doc_width - 200) // 2
-    background, barcode_dims = add_barcode(
-        background,
-        doc_width,
-        doc_height,
-        position=(barcode_x, 20),
-    )
-    create_yolo_label(training_folder, filename, doc_width, doc_height, barcode_dims)
+    image = Image.new("RGB", (doc_width, doc_height), color="white")
+    draw = ImageDraw.Draw(image)
     add_text_and_lines(draw, doc_width)
-    barcode_path = f"{training_folder}/images/{filename.rsplit('.', 1)[0]}.jpg"
-    background.save(barcode_path, format="JPEG", quality=95)
-    add_scan_effects(barcode_path)
+    barcode_x = (doc_width - 200) // 2
+    image, barcode_dims = add_barcode(
+        image, doc_width, doc_height, position=(barcode_x, 20)
+    )
+    image = add_scan_effects(image)
+    debug_draw_boxes(image, barcode_dims)
+    image_path = f"{training_folder}/images/{filename.rsplit('.', 1)[0]}.jpg"
+    save_pil_jpeg(image, image_path)
+    create_yolo_label(training_folder, filename, doc_width, doc_height, barcode_dims)
 
 
-def add_scan_effects(image_path: str):
-    image = pil_to_np_grayscale(image_path)
+def add_scan_effects(image: PILImage) -> PILImage:
+    image = pil_to_np_grayscale(image)
     image = apply_pixel_damage_effect(image)
     image = apply_blur_effect(image)
     image = apply_perspective_warp(image)
     image = apply_fold_warp(image)
-    image = np_to_pil_grayscale(image)
-    save_pil_jpeg(image, image_path)
+    image = np_to_pil(image)
+    return image
 
 
 if __name__ == "__main__":
