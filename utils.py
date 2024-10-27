@@ -340,7 +340,7 @@ def apply_perspective_warp(
     """
     # 50% chance to skip warping
     if random.random() < 0.5:
-        return image, None
+        return image, barcode_coords
 
     height, width = image.shape[:2]
     max_offset = int(width * warp_intensity)
@@ -390,7 +390,7 @@ def apply_fold_warp(
     Returns: Tuple of (warped_image, new_barcode_coords or None if no warp applied)
     """
     if random.random() < 0.5:
-        return image, None
+        return image, barcode_coords
 
     height, width = image.shape[:2]
 

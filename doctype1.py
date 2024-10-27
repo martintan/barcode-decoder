@@ -1,3 +1,4 @@
+from typing import Optional
 from barcode import Code128
 from barcode.writer import ImageWriter
 from PIL import Image, ImageDraw, ImageFont
@@ -102,22 +103,22 @@ def generate_image(
     background = Image.new("RGB", (doc_width, doc_height), color="white")
     draw = ImageDraw.Draw(background)
     add_text_and_lines(draw, doc_width, doc_height)
-    background, barcode_dims = add_barcode(background, doc_width, doc_height)
-    image = add_scan_effects(background)
-    debug_draw_boxes(image, barcode_dims)
+    background, barcode_coords = add_barcode(background, doc_width, doc_height)
+    image, new_coords = add_scan_effects(background, barcode_coords=barcode_coords)
+    debug_draw_boxes(image, new_coords)
     image_path = f"{training_folder}/images/{filename.rsplit('.', 1)[0]}.jpg"
     save_pil_jpeg(image, image_path)
-    create_yolo_label(training_folder, filename, doc_width, doc_height, barcode_dims)
+    create_yolo_label(training_folder, filename, doc_width, doc_height, new_coords)
 
 
-def add_scan_effects(image: PILImage) -> PILImage:
+def add_scan_effects(image: PILImage, barcode_coords: Optional[tuple[float, float, float, float]] = None) -> PILImage:
     image = pil_to_np_grayscale(image)
     image = apply_pixel_damage_effect(image)
     image = apply_blur_effect(image)
-    image = apply_perspective_warp(image)
-    image = apply_fold_warp(image)
+    image, new_coords = apply_perspective_warp(image, barcode_coords=barcode_coords)
+    image, new_coords = apply_fold_warp(image, barcode_coords=new_coords)
     image = np_to_pil(image)
-    return image
+    return image, new_coords
 
 
 if __name__ == "__main__":
