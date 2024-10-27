@@ -24,10 +24,7 @@ def generate_random_number() -> str:
 
 
 def generate_random_text(word_count, max_word_length=10):
-    return " ".join(
-        generate_random_word(random.randint(3, max_word_length))
-        for _ in range(word_count)
-    )
+    return " ".join(generate_random_word(random.randint(3, max_word_length)) for _ in range(word_count))
 
 
 def generate_random_word(length):
@@ -52,20 +49,12 @@ def apply_brightness_effect(image: np.ndarray):
     # to that light source and apply exponential decay. The sum creates overlapping
     # light effects that simulate natural lighting variations.
     brightness_map += sum(
-        np.exp(
-            -np.sqrt(
-                (x / image.shape[1] - c[0]) ** 2 + (y / image.shape[0] - c[1]) ** 2
-            )
-            * 1.2
-        )
-        * i
+        np.exp(-np.sqrt((x / image.shape[1] - c[0]) ** 2 + (y / image.shape[0] - c[1]) ** 2) * 1.2) * i
         for c, i in zip(centers, intensities)
     )
 
     # Normalize and adjust brightness map
-    brightness_map = (brightness_map - brightness_map.min()) / (
-        brightness_map.max() - brightness_map.min()
-    )
+    brightness_map = (brightness_map - brightness_map.min()) / (brightness_map.max() - brightness_map.min())
     brightness_map = np.power(brightness_map, 0.7)
 
     # Apply brightness effect
@@ -85,10 +74,7 @@ def apply_pixel_damage_effect(
     dark_pixel_pct: float = 0.01,
 ):
     # Apply white pixels
-    image[
-        np.random.random(image.shape)
-        < np.random.uniform(white_pixel_pct, white_pixel_pct * 35)
-    ] = 255
+    image[np.random.random(image.shape) < np.random.uniform(white_pixel_pct, white_pixel_pct * 35)] = 255
 
     # Apply dark pixels to damaged areas
     damaged = np.random.random(image.shape) < dark_pixel_pct
@@ -125,9 +111,7 @@ def generate_signature_scribble(
     start_y: int,
     width: int,
 ):
-    def generate_bezier_curve(
-        points: list[tuple[int, int]], num_steps: int = 50
-    ) -> list[tuple[int, int]]:
+    def generate_bezier_curve(points: list[tuple[int, int]], num_steps: int = 50) -> list[tuple[int, int]]:
         curve_points = []
         for t in range(num_steps):
             t = t / (num_steps - 1)
@@ -343,83 +327,70 @@ def create_yolo_label(
     label_name = filename.split("/")[-1].rsplit(".", 1)[0]
     label_path = f"{training_folder}/labels/{label_name}.txt"
     with open(label_path, "w") as f:
-        f.write(
-            f"0 {center_x:.6f} {center_y:.6f} {norm_barcode_width:.6f} {norm_barcode_height:.6f}"
-        )
+        f.write(f"0 {center_x:.6f} {center_y:.6f} {norm_barcode_width:.6f} {norm_barcode_height:.6f}")
 
 
 def apply_perspective_warp(
-    image: np.ndarray, warp_intensity: float = 0.1
-) -> np.ndarray:
+    image: np.ndarray,
+    warp_intensity: float = 0.1,
+    barcode_coords: Optional[tuple[float, float, float, float]] = None,
+) -> tuple[np.ndarray, Optional[tuple[float, float, float, float]]]:
     """
-    Applies a perspective warp effect to simulate paper bending during scanning.
-    Has a 50% chance of applying the warp effect.
-
-    Args:
-        image: Input image as numpy array
-        warp_intensity: Controls the intensity of the warping effect (0.0 to 1.0)
-
-    Returns:
-        Warped image as numpy array, or original image if warp not applied
+    Returns: Tuple of (warped_image, new_barcode_coords or None if no warp applied)
     """
     # 50% chance to skip warping
     if random.random() < 0.5:
-        return image
+        return image, None
 
     height, width = image.shape[:2]
-
-    # Define the source points (original corners)
-    src_points = np.float32(
-        [
-            [0, 0],  # Top-left
-            [width - 1, 0],  # Top-right
-            [width - 1, height - 1],  # Bottom-right
-            [0, height - 1],  # Bottom-left
-        ]
-    )
-
-    # Calculate random offsets for top corners to simulate paper bend
     max_offset = int(width * warp_intensity)
     top_left_offset = random.randint(0, max_offset)
     top_right_offset = random.randint(0, max_offset)
 
-    # Define destination points with warped top edge
+    # Define source and destination points as before
+    src_points = np.float32([[0, 0], [width - 1, 0], [width - 1, height - 1], [0, height - 1]])
     dst_points = np.float32(
         [
-            [0 + top_left_offset, 0 + top_left_offset],  # Top-left (shifted)
-            [width - 1 - top_right_offset, 0 + top_right_offset],  # Top-right (shifted)
-            [width - 1, height - 1],  # Bottom-right (unchanged)
-            [0, height - 1],  # Bottom-left (unchanged)
+            [0+top_left_offset, 0+top_left_offset],
+            [width-1-top_right_offset, 0+top_right_offset],
+            [width-1, height-1],
+            [0, height-1]
         ]
     )
 
-    # Calculate perspective transform matrix
     matrix = cv2.getPerspectiveTransform(src_points, dst_points)
+    warped_image = cv2.warpPerspective(image, matrix, (width, height), borderMode=cv2.BORDER_REPLICATE)
 
-    # Apply the perspective transformation
-    warped_image = cv2.warpPerspective(
-        image, matrix, (width, height), borderMode=cv2.BORDER_REPLICATE
-    )
+    # Transform barcode coordinates if provided
+    new_coords = None
+    if barcode_coords is not None:
+        x, y, w, h = barcode_coords
+        # Convert to corner points
+        corners = np.float32([[x, y], [x + w, y], [x + w, y + h], [x, y + h]])
+        # Transform corners
+        transformed_corners = cv2.perspectiveTransform(corners.reshape(-1, 1, 2), matrix).reshape(-1, 2)
 
-    return warped_image
+        # Get new bounding box from transformed corners
+        min_x = np.min(transformed_corners[:, 0])
+        min_y = np.min(transformed_corners[:, 1])
+        max_x = np.max(transformed_corners[:, 0])
+        max_y = np.max(transformed_corners[:, 1])
+
+        new_coords = (min_x, min_y, max_x - min_x, max_y - min_y)
+
+    return warped_image, new_coords
 
 
-def apply_fold_warp(image: np.ndarray, warp_intensity: float = 0.05) -> np.ndarray:
+def apply_fold_warp(
+    image: np.ndarray,
+    warp_intensity: float = 0.05,
+    barcode_coords: Optional[tuple[float, float, float, float]] = None,
+) -> tuple[np.ndarray, Optional[tuple[float, float, float, float]]]:
     """
-    Applies a perspective warp to simulate a diagonal fold across the document,
-    with the top portion warped in a random direction.
-
-    Args:
-        image: Input image as numpy array
-        warp_intensity: Controls the intensity of the warping effect (0.0 to 1.0)
-                       Default reduced to 0.05 for subtler effect
-
-    Returns:
-        Image with diagonal fold effect as numpy array
+    Returns: Tuple of (warped_image, new_barcode_coords or None if no warp applied)
     """
-    # 50% chance to skip warping
     if random.random() < 0.5:
-        return image
+        return image, None
 
     height, width = image.shape[:2]
 
@@ -461,9 +432,7 @@ def apply_fold_warp(image: np.ndarray, warp_intensity: float = 0.05) -> np.ndarr
 
     # Apply perspective transform
     matrix = cv2.getPerspectiveTransform(src_points, dst_points)
-    warped = cv2.warpPerspective(
-        image, matrix, (width, height), borderMode=cv2.BORDER_REPLICATE
-    )
+    warped = cv2.warpPerspective(image, matrix, (width, height), borderMode=cv2.BORDER_REPLICATE)
 
     # Blend with smoother transition
     mask = cv2.GaussianBlur(mask, (31, 31), 0)
@@ -477,9 +446,7 @@ def apply_fold_warp(image: np.ndarray, warp_intensity: float = 0.05) -> np.ndarr
         y_offset = int(np.tan(np.radians(fold_angle)) * (x - width / 2))
         y_fold = min(max(0, fold_y + y_offset), height - 1)
 
-        for y in range(
-            max(0, y_fold - shadow_width), min(height, y_fold + shadow_width)
-        ):
+        for y in range(max(0, y_fold - shadow_width), min(height, y_fold + shadow_width)):
             distance = abs(y - y_fold)
             shadow_intensity = (1 - distance / shadow_width) * 0.25  # Reduced from 0.4
             shadow_mask[y, x] = shadow_intensity
@@ -487,7 +454,32 @@ def apply_fold_warp(image: np.ndarray, warp_intensity: float = 0.05) -> np.ndarr
     # Apply shadow
     result = result * (1 - shadow_mask)
 
-    return result.astype(np.uint8)
+    # Transform barcode coordinates if provided
+    new_coords = None
+    if barcode_coords is not None:
+        x, y, w, h = barcode_coords
+        corners = np.float32([[x, y], [x + w, y], [x + w, y + h], [x, y + h]])
+
+        # Only transform points above the fold line
+        transformed_corners = corners.copy()
+        for i, corner in enumerate(corners):
+            if corner[1] < fold_y:  # Point is above fold
+                # Apply similar transformation as the image warp
+                offset_x = top_left_offset if corner[0] < width / 2 else top_right_offset
+                transformed_corners[i] = [
+                    corner[0] + offset_x,
+                    corner[1] + vertical_offset,
+                ]
+
+        # Get new bounding box
+        min_x = np.min(transformed_corners[:, 0])
+        min_y = np.min(transformed_corners[:, 1])
+        max_x = np.max(transformed_corners[:, 0])
+        max_y = np.max(transformed_corners[:, 1])
+
+        new_coords = (min_x, min_y, max_x - min_x, max_y - min_y)
+
+    return result.astype(np.uint8), new_coords
 
 
 def debug_draw_boxes(image: Image, barcode_dims: tuple[int, int, int, int]):
